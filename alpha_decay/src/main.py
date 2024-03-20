@@ -22,6 +22,8 @@ def main():
     A = a.coeff_mat()
     print(np.real(A))
     print(A.shape)
+    print(a.get_transm_coeff())
+    print(a.get_half_life())
     return
 
 
@@ -36,6 +38,7 @@ class Alphadecay:
     discr_steps: int
     coulomb_rng: float    
     mass_dict: mass_dict_type
+    # TODO store A, x in class variables
 
     # exact coulomb
     # r: distance (fm)
@@ -140,6 +143,26 @@ class Alphadecay:
 
 
     # TODO function that solves the LSE and returns the coefficients
+    def get_transm_coeff(self):
+        A = self.coeff_mat()
+        b = np.zeros(2 * self.discr_steps + 3, dtype=np.complex64)
+        b[0] = 1
+        x = np.linalg.solve(A, b)
+
+        V = self.piecewise_constant_potential()
+        k1 = self.k(V[0])
+        k2 = self.k(V[-1])
+
+        T = np.abs(x[-1]) ** 2 * k2 / k1
+        return T
+    
+    # TODO function that gets the half life from T
+    def get_half_life(self): # seconds
+        v = np.sqrt(2 * self.E_kin / M_alpha) * 2.998e23  # (fm/s)
+        tau = 2 * self.R / (v * self.get_transm_coeff())
+        t_12 = tau * np.log(2)
+        
+        return t_12 #/ (60 * 24 * 365)
 
     # TODO function that builds the wave function from the coefficients
 
