@@ -26,6 +26,8 @@ class Alphadecay:
     # TODO store A, x in class variables ?
     solved: bool
     x: complex64[:]
+    psi: complex64[:]
+    density: float64[:]
 
     # exact coulomb
     # r: distance (fm)
@@ -151,6 +153,42 @@ class Alphadecay:
         return t_12 #/ (60 * 24 * 365) #years
 
     # TODO function that builds the wave function from the coefficients
+    # x range: 0 to coulomb range + 10 fm
+    # n: number of evaluation points
+    def calculate_psi(self, n=1000):
+        if not self.solved:
+            self.solve()
+        
+        xs = np.linspace(0.0, self.coulomb_rng + 10, n)
+        dx = (self.coulomb_rng - self.R) / self.discr_steps
+        V = self.piecewise_constant_potential()
+        psi = np.zeros(n, dtype=np.complex64)
+
+        for i, x in enumerate(xs):
+            if x <= self.R:                
+                psi[i] = self.x[0] * np.exp( 1j * self.k(V[0]) * x) + self.x[1] * np.exp( -1j * self.k(V[0]) * x)
+            elif x >= self.coulomb_rng:
+                psi[i] = self.x[-1] * np.exp( 1j * self.k(V[-1]) * x)
+            else:
+                j = int((x - self.R) / dx) + 1          
+                psi[i] = self.x[2*j] * np.exp(self.kappa(V[j]) * x) \
+                    + self.x[2*j + 1] * np.exp(-self.kappa(V[j]) * x)
+        
+        self.psi = psi
+        return psi
+            
+    
+    def calculate_density(self, n):
+        if not self.solved:
+            self.solve()
+
+        self.calculate_psi(n)
+        
+        self.density = (self.psi.real ** 2 + self.psi.imag ** 2).astype(np.float64)
+        
+        return self.density
+
+         
 
     # A: Atomic mass number
     # Z: Charge number

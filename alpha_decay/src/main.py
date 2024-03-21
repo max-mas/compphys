@@ -1,4 +1,5 @@
 import alphadecay
+import parameter_study
 
 def main():
     rng = alphadecay.get_coulomb_range(92, 238)
@@ -10,6 +11,7 @@ def main():
     #print(A.shape)
     #print(a.get_transm_coeff())
     print(a.get_half_life())
+    parameter_study.plot_density(a, n=1000, path="./alpha_decay/plots/test.png")
     return
 
 
