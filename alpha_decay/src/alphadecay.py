@@ -22,12 +22,11 @@ class Alphadecay:
     E_kin: float
     discr_steps: int
     coulomb_rng: float    
-    mass_dict: mass_dict_type
-    # TODO store A, x in class variables ?
+    mass_dict: mass_dict_type # type: ignore
     solved: bool
-    x: complex64[:]
-    psi: complex64[:]
-    density: float64[:]
+    x: complex64[:] # type: ignore
+    psi: complex64[:] # type: ignore
+    density: float64[:] # type: ignore
 
     # exact coulomb
     # r: distance (fm)
