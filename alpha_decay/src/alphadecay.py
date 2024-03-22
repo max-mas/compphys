@@ -1,6 +1,6 @@
 import numpy as np
 import scipy as scp
-from numba import njit, int64, float64, complex64
+from numba import int64, float64, complex64
 from numba.types import UniTuple, DictType
 mass_dict_key_type = UniTuple(int64, 2)
 mass_dict_type = DictType(mass_dict_key_type, float64)
@@ -37,17 +37,14 @@ class Alphadecay:
         return fs * Z1 * Z2 * hc / r
     
 
-    # E kin from mass defect in the frame where the daughter nucleus is stationary # TODO is this ok?
+    # E kin from mass defect in the frame where the daughter nucleus is stationary
     # return: energy (MeV)
     def E_kin_alpha(self) -> float:
         M_1 = self.mass_dict[(self.Z, self.A)]
         M_2 = self.mass_dict[(self.Z-2, self.A-4)]
         E_defect = M_1 - M_2 - M_alpha
 
-        v_rel_squared = 2 * E_defect * (M_2 + M_alpha) / (M_2 * M_alpha) # (c)
-        E_alpha = 0.5 * v_rel_squared * M_alpha # (MeV)
-
-        return E_alpha
+        return E_defect
 
 
     # function that generates the discretised potential
@@ -59,8 +56,8 @@ class Alphadecay:
         V[0] = self.V0
         for i in range(1, self.discr_steps + 2):
             x = self.R + (i-1) * dx
-            if np.abs(x - self.coulomb_rng) < 1e-6: # TODO is this valid? prevents that k outside is 0
-                V[i] = self.coulomb(x + 1e-14) # tiny offset
+            if np.abs(x - self.coulomb_rng) < 1e-10: # TODO is this valid? prevents that k outside is 0
+                V[i] = self.coulomb(x + 1e-13) # offset
                 continue
             V[i] = self.coulomb(x) # calculate coulomb potential at the connection points
         # last value of V is (almost) exactly E_kin if coulomb_rng was calculated correctly!
@@ -218,19 +215,25 @@ class Alphadecay:
     # V0: Depth of core well wrt. alpha particle energy (MeV)
     # discr_steps: Number of discrete steps to divide the potential into
     # coulomb_rng: Range of the coulomb potential (fm) (set to zero beyond)
-    def __init__(self, Z, A, coulomb_rng, discr_steps=100):
+    def __init__(self, Z, A, coulomb_rng, discr_steps=100, R_factor=1.35, V0 = -134):
         # TODO dictionary with atomic masses for mother and daughter nuclei
         self.mass_dict = Dict.empty(key_type=mass_dict_key_type, value_type=float64) # key: (Z, A)
-        self.mass_dict[(92, 238)] = 221742.9 # U 238
-        self.mass_dict[(90, 234)] = 218010.23 # Th 234 # TODO add other elements
+        self.mass_dict[(92, 238)] = 221742.9  # U  238
+        self.mass_dict[(90, 234)] = 218010.23 # Th 234
+        self.mass_dict[(92, 235)] = 218942.03 # U  235
+        self.mass_dict[(90, 231)] = 215208.95 # Th 231
+        self.mass_dict[(90, 232)] = 216142.08 # Th 232
+        self.mass_dict[(88, 228)] = 212409.6  # Ra 228
+        self.mass_dict[(86, 222)] = 206808.06 # Rn 222
+        self.mass_dict[(84, 218)] = 203074.07 # Po 218
         self.mass_dict[(84, 212)] = 197466.38 # Po 212
         self.mass_dict[(82, 208)] = 193729.02 # Pb 208
 
 
         self.Z = Z
         self.A = A
-        self.R = 1.3 * A ** (1/3) # TODO vary this?
-        self.V0 = - 134 # MeV
+        self.R = R_factor * A ** (1/3)
+        self.V0 = V0 # MeV
         self.E_kin = self.E_kin_alpha()
         self.discr_steps = discr_steps
         self.coulomb_rng = coulomb_rng # this must be given such that V(coulomb_rng) = E_kin !!
@@ -238,25 +241,31 @@ class Alphadecay:
             raise ValueError("Invalid coulomb range!") # raise error if range invalid
 
         
+# To solve Coulomb - E_kin = 0
 def coulomb_minus_E(r, E, Z1, Z2):
         return fs * Z1 * Z2 * hc / r - E
 
+# Copy of above function accessible without creating an object
 def E_kin_alpha(Z, A):
         mass_dict = dict() # key: (Z, A)
-        mass_dict[(92, 238)] = 221742.9 # U 238
-        mass_dict[(90, 234)] = 218010.23 # Th 234 # TODO also add other elements here
+        mass_dict[(92, 238)] = 221742.9  # U 238
+        mass_dict[(90, 234)] = 218010.23 # Th 234
+        mass_dict[(92, 235)] = 218942.03 # U  235
+        mass_dict[(90, 231)] = 215208.95 # Th 231
+        mass_dict[(90, 232)] = 216142.08 # Th 232
+        mass_dict[(88, 228)] = 212409.6  # Ra 228
+        mass_dict[(86, 222)] = 206808.06 # Rn 222
+        mass_dict[(84, 218)] = 203074.07 # Po 218
         mass_dict[(84, 212)] = 197466.38 # Po 212
         mass_dict[(82, 208)] = 193729.02 # Pb 208
         M_1 = mass_dict[(Z, A)]
         M_2 = mass_dict[(Z-2, A-4)]
         E_defect = M_1 - M_2 - M_alpha
 
-        v_rel_squared = 2 * E_defect * (M_2 + M_alpha) / (M_2 * M_alpha) # (c)
-        E_alpha = 0.5 * v_rel_squared * M_alpha 
+        return E_defect
 
-        return E_alpha
-
+# Get range until which Coulomb > E_kin for given element
 def get_coulomb_range(Z, A):
     E = E_kin_alpha(Z, A)
     x = scp.optimize.fsolve(coulomb_minus_E, x0=1, args=(E, Z-2, 2))
-    return x # TODO ??
+    return x

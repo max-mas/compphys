@@ -1,17 +1,62 @@
 import alphadecay
 import parameter_study
+import numpy as np
 
 def main():
-    rng = alphadecay.get_coulomb_range(92, 238)
-    a = alphadecay.Alphadecay(92, 238, rng, 3000)
-    #print(a.E_kin)
-    #print(a.piecewise_constant_potential())
-    #A = a.coeff_mat()
-    #print(np.real(A))
-    #print(A.shape)
-    #print(a.get_transm_coeff())
-    print(a.get_half_life())
-    parameter_study.plot_density(a, n=1000, path="./alpha_decay/plots/u238.png")
+    elements = [(92, 238), (92, 235), (90, 232), (86, 222), (84, 212)] # U 238, U235, Th 232, Rn 222, Po 212
+    names = {(92, 238): "u238", 
+             (92, 235): "u235",
+             (90, 232): "th232",
+             (86, 222): "rn222", 
+             (84, 212): "po212"}
+    
+    # for final plots
+    Es = []
+    t12s = []
+    Zs = []
+    As = []
+    
+
+    for element in elements:
+        name = names[element]
+        (Z, A) = element
+
+        # Solve system with many bins, print half life, plot density
+        # Parameters: R_factor = 1.35, V0 = -134 MeV, 2000 bins
+        rng = alphadecay.get_coulomb_range(Z, A)
+        a = alphadecay.Alphadecay(Z, A, rng, 2000)
+        print(40*"-")
+        E = a.E_kin
+        Es.append(E)
+        print("E_kin", name, E, "MeV")
+        t12 = a.get_half_life()
+        t12s.append(t12)
+        As.append(A)
+        Zs.append(Z)
+        true_t12 = parameter_study.true_half_lifes[(Z,A)]
+        print("Half life", name, t12, "s")
+        print("Relative error:", np.round(np.abs(true_t12 - t12) / true_t12, 2))
+        parameter_study.plot_density(a, n=1000, path=f"./alpha_decay/plots/density/" + name + ".pdf")
+
+        print(40*"-")
+        print("Testing:")
+        # Plot dependence of half life on number of bins
+        # Parameters: R_factor = 1.35, V0 = -134 MeV
+        print("Bin dependence", name)
+        #parameter_study.test_bin_dependence(Z, A, path=f"./alpha_decay/plots/bin_dependence/bins_" + name + ".pdf")
+
+        # Plot dependence of half life on nuclear radius
+        # Parameters: bins = 1000, V0 = -134 MeV
+        print("R dependence", name)
+        #parameter_study.test_R_dependence(Z, A, path=f"./alpha_decay/plots/R_dependence/R_" + name + ".pdf", num_trials=30, bins=1000)
+
+        # Plot dependence of half life on strong force potential
+        # Parameters: R_factor = 1.35, bins = 1000
+        print("V0 dependence", name)
+        #parameter_study.test_V0_dependence(Z, A, path=f"./alpha_decay/plots/V0_dependence/V0_" + name + ".pdf", num_trials=30, bins=1000)
+
+    parameter_study.plot_t12s(Zs, As, t12s, path="./alpha_decay/plots/summary_t.pdf")
+    parameter_study.plot_E(Zs, As, Es, path="./alpha_decay/plots/summary_E.pdf")
     return
 
 
