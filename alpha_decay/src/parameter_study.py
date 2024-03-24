@@ -4,6 +4,7 @@ import numpy as np
 from scipy.optimize import fsolve
 from scipy.interpolate import CubicSpline
 from tqdm.auto import tqdm
+import time
 
 # For nicer plots, requires a fairly full TeXlive install
 plt.rcParams.update({
@@ -74,6 +75,7 @@ def plot_density(a: alphadecay.Alphadecay, n, path):
 
     fig.tight_layout()
     fig.savefig(path)
+    plt.close(fig)
 
 # TODO numerics testing
 
@@ -96,6 +98,7 @@ def test_bin_dependence(Z, A, path, num_trials=10, bin_min=1, bin_max=3.5):
     ax.legend()
 
     fig.savefig(path)
+    plt.close(fig)
 
 
 def test_R_dependence(Z, A, path, bins=1000, num_trials=10, R_factor_min=1, R_factor_max=2):
@@ -123,6 +126,7 @@ def test_R_dependence(Z, A, path, bins=1000, num_trials=10, R_factor_min=1, R_fa
     ax.legend()
 
     fig.savefig(path)
+    plt.close(fig)
 
 def test_bin_dependence(Z, A, path, num_trials=10, bin_min=1, bin_max=3.5):
     rng = alphadecay.get_coulomb_range(Z, A)
@@ -143,6 +147,7 @@ def test_bin_dependence(Z, A, path, num_trials=10, bin_min=1, bin_max=3.5):
     ax.legend()
 
     fig.savefig(path)
+    plt.close(fig)
 
 
 def test_V0_dependence(Z, A, path, bins=1000, num_trials=30, V0_min=-150, V0_max=-120):
@@ -171,6 +176,7 @@ def test_V0_dependence(Z, A, path, bins=1000, num_trials=30, V0_min=-150, V0_max
 
     fig.tight_layout()
     fig.savefig(path)
+    plt.close(fig)
 
 cols = {(92, 238): "forestgreen", 
         (92, 235): "slateblue",
@@ -191,20 +197,49 @@ def plot_t12s(Zs, As, t12s, path):
     ax.legend()
 
     fig.savefig(path)
+    plt.close(fig)
 
 def plot_E(Zs, As, Es, path):
     fig, ax = plt.subplots()
     for Z, A, E in zip(Zs, As, Es):
         ax.scatter(A, E, label=names[(Z, A)] + " numerical", color=cols[(Z, A)])
         ax.scatter(A, true_Es[(Z, A)], label=names[(Z, A)] + " experimental", color=cols[(Z, A)], alpha=0.5, marker="v")
-        ax.scatter(A, E - true_Es[(Z, A)])
     
     ax.set_xlabel("Mass number $A$")
     ax.set_ylabel("$E_{\\text{kin}}$ (MeV)")
     ax.legend()
 
     fig.savefig(path)
-    
-
+    plt.close(fig)
 
 # TODO performance scaling
+
+def time_scaling(path, num_trials=30, bin_min=2, bin_max=3.5):
+    (Z, A) = (92, 238) # doesn't matter, just has to be valid
+    rng = alphadecay.get_coulomb_range(Z, A)
+    a = alphadecay.Alphadecay(Z, A, rng, 100)
+    a.get_half_life() # do this once so numba compiles everything!
+
+    bins = np.logspace(bin_min, bin_max, num_trials, dtype=np.int64)
+    times = np.empty(num_trials, dtype=np.double)
+    for i, bin in tqdm(enumerate(bins)):
+        start = time.time_ns()
+        a = alphadecay.Alphadecay(Z, A, rng, bin)
+        a.get_half_life()
+        end = time.time_ns()
+
+        times[i] = 1e-9 * (end-start)
+
+        del a
+
+    fig, ax = plt.subplots()
+    ax.plot(bins, times)
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+
+    ax.set_xlabel("Number of bins")
+    ax.set_ylabel("Runtime (s)")
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)

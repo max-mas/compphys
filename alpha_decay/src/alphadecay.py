@@ -145,9 +145,17 @@ class Alphadecay:
             b = np.zeros(2 * self.discr_steps + 3, dtype=np.complex64)
             b[0] = 1 # we fix A = 1 as suggested in class
             self.x = np.linalg.solve(A, b) # store solution coefficients for later use
-            self.solved = True # no need to do this multiple times
 
-        return self.x 
+            # check solution:
+            err = A @ self.x - b
+            zero = np.linalg.norm(err)
+            if zero < 1e-5:
+                self.solved = True # no need to do this multiple times
+
+                return self.x 
+            else: # throw error if solution is invalid
+                print("||Ax - b|| =", zero)
+                raise Exception(f"Numerical solution does not satisfy Ax - b = 0")
 
     # function that returns the transmission coefficient
     def get_transm_coeff(self) -> float:
