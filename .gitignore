@@ -1,5 +1,17 @@
 # Own directories:
 env
+.vscode
+
+# latex stuff
+*.aux
+*.bbl 
+*.bcf
+*.fdb_latexmk
+*.fls 
+*.log 
+*.run.xml 
+*.synctex.gz 
+*.toc
 
 
 # Github template:
