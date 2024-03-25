@@ -43,7 +43,7 @@ def main():
         print("Relative error:", np.round(np.abs(true_t12 - t12) / true_t12, 2))
         file.write("Relative error:" + str(np.round(np.abs(true_t12 - t12) / true_t12, 2)) + "\n")
         parameter_study.plot_density(a, n=1000, path=f"./alpha_decay/plots/density/" + name + ".pdf")
-
+        
         print(40*"-")
         print("Testing:")
         # Plot dependence of half life on number of bins
@@ -59,7 +59,7 @@ def main():
         # Plot dependence of half life on strong force potential
         # Parameters: R_factor = 1.35, bins = 1000
         print("V0 dependence", name)
-        parameter_study.test_V0_dependence(Z, A, path=f"./alpha_decay/plots/V0_dependence/V0_" + name + ".pdf", num_trials=30, bins=1000)
+        parameter_study.test_V0_dependence(Z, A, path=f"./alpha_decay/plots/V0_dependence/V0_" + name + ".pdf", num_trials=30, bins=1000, V0_max=0)
     
     file.close()
 

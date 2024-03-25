@@ -56,7 +56,7 @@ class Alphadecay:
         V[0] = self.V0
         for i in range(1, self.discr_steps + 2):
             x = self.R + (i-1) * dx
-            if np.abs(x - self.coulomb_rng) < 1e-10: # TODO is this valid? prevents that k outside is 0
+            if np.abs(x - self.coulomb_rng) < 1e-10: # prevents that k outside is 0 => T = 0
                 V[i] = self.coulomb(x + 1e-13) # offset
                 continue
             V[i] = self.coulomb(x) # calculate coulomb potential at the connection points
@@ -224,7 +224,7 @@ class Alphadecay:
     # discr_steps: Number of discrete steps to divide the potential into
     # coulomb_rng: Range of the coulomb potential (fm) (set to zero beyond)
     def __init__(self, Z, A, coulomb_rng, discr_steps=100, R_factor=1.35, V0 = -134):
-        # TODO dictionary with atomic masses for mother and daughter nuclei
+        # dictionary with atomic masses for mother and daughter nuclei
         self.mass_dict = Dict.empty(key_type=mass_dict_key_type, value_type=float64) # key: (Z, A)
         self.mass_dict[(92, 238)] = 221742.9  # U  238
         self.mass_dict[(90, 234)] = 218010.23 # Th 234

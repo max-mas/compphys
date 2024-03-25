@@ -59,6 +59,7 @@
 
 \newpage
 \section{Introduction}
+In this report, a simple quantum tunnelling model of alpha decay is presented, implemented and analysed. It is part of the coursework for the computational physics class held at Stockholm University in 2024.
 
 \section{Alpha Decay}
 Alpha decay is the process in which a nucleus $^A_Z \text{X}$ emits an alpha particle $^4\text{He}^{2+}$, leaving behind a $^{A-4}_{Z-2}\text{Y}$ nucleus. This mode of decay occurs mostly in heavy nuclei such as $^{238} \text{U}$, which decays into $^{234}\text{Th}$. Generally, alpha decay can only occur if the combined energy of the alpha particle and the daughter nucleus is less than that of the original nucleus, i.e.
@@ -250,7 +251,25 @@ Comparing the plots for the different elements studied, a bin number of $N > 100
 The project description suggests investigating the numerical error of the solution obtained from the LU decomposition. Sadly, this has to be omitted here due to a lack of time ahead of the deadline. However, every obtained solution of the LSE was checked for validity using the criterion $||Ax - b|| < 10^{-5}$. $||Ax - b||$ was usually observed to be of order of $10^{-6}$ or less.
 
 \subsection{Physics}
-Five isotopes were decided on as test cases for the algorithm: $^{238}\text{U}$, $^{235}\text{U}$, $^{232}\text{Th}$, $^{222}\text{Rn}$ and $^{212}\text{Po}$. For these and their decay products, the atomic masses were obtained from \cite{Wolfram} which refers to \cite{Audi} as its source.
+Five isotopes were decided on as test cases for the algorithm: $^{238}\text{U}$, $^{235}\text{U}$, $^{232}\text{Th}$, $^{222}\text{Rn}$ and $^{212}\text{Po}$. For these and their decay products, the atomic masses listed in table~\ref{tab:result} were obtained from~\cite{Wolfram} which refers to~\cite{Audi} as its source.
+
+To verify that the coefficients the half-life is calculated from represent a valid wave function, the non-normalised probability density $\psi^* \psi$ is shown in figure~\ref{fig:density}. It can be clearly seen that the solution is smooth. Furthermore, it is oscillating inside the nucleus, decaying in the classically forbidden region and oscillating outside (though this is not visible on the chosen scale). The model parameters used here were $\tilde R = 1.35$, $V_0 = - 134\,\text{MeV}$ and 2000 bins. It can also be seen that for the lighter isotopes, the coulomb potential falls below $E_\alpha$ earlier and the solution thus decays faster.
+
+Since the validity of the solution has been established, the dependence of the predicted half-life on the chosen value of $\tilde R$ is now examined in figure~\ref{fig:r}. We see that, varying $tilde R$, the half-lives vary over multiple orders of magnitude, so the model is exceptionally sensitive to the choice of $\tilde R$. This should immediately crush any hope to accurately predict the half-lives of multiple different isotopes by making a good choice in $\tilde R$.
+
+In fact, the value of $\tilde R$ that reproduces the experimental half-life ranges between 1.25 and 1.4 for the Uranium and Thorium isotopes, which is why we chose to fix it to 1.35 for the rest of the analysis. For the lighter isotopes, the suggested $\tilde R$ approaches 2 which is most definitely unphysical. 
+
+The other parameter to which one might expect the model to be very sensitive is $V_0$, however, this was not observed. Especially compared with the impact $\tilde R$ has on the half-lives, varying $V_0$ in a range of $-150$ to $0$ MeV around the suggested value of $-134$ MeV had comparatively little impact on the prediction, as can be seen for two exemplary isotopes in figure~\ref{fig:v0}. Interestingly, there appears to be a minimum at an isotope-dependant value of $V_0$ slightly below zero, which implies that tunnelling is more likely for a slightly bound particle than for one that is free inside the nucleus.
+
+Due to the comparatively low impact and to keep the choice physically meaningful, $V_0$ was kept at the suggested value for the rest of the analysis. Sadly, there was not enough time to investigate how using a more realistic nuclear potential would impact results.
+
+The best predicted values using $\tilde R = 1.35$, $V_0=-134\,\text{MeV}$ and $N = 2000$ are shown in figure~\ref{fig:summary} and listed in table~\ref{tab:result}. 
+
+Notably, the prediction for the heavy isotopes is within one order of magnitude. For the lighter isotopes, the error becomes larger as the value of the true half-lives becomes increasingly small. The model is able to reproduce the qualitative result that, within a small range of parameters, the half-life varies over many orders of magnitude. $^{235}\text{U}$ is the only isotope for which the predicted value is lower than the experimental one, this may be connected to the fact that it is the only odd-numbered isotope considered which implies non-zero nuclear spin.
+
+The assignment notes that $^{238}\text{U}$ does not decay to the ground state with a 26\% chance. This is something our model cannot account for by design. However, the prediction for its half-life is still more accurate than that for $^{212}\text{Po}$, which we know always decays to the ground state of $^{208}\text{Pb}$. 
+
+During testing of the implementation and as mentioned above, the problem of the program predicting hard zeros for $T$ arose, which was fixed by evaluating the \enquote{outside} potential with a slight offset. It might be that the lighter isotopes were for a reason we were not able to determine more sensitive to the choice of this offset, which is not a physical but rather a numerical parameter. With more time, it would have been prudent to study the impact of the choice of this $\epsilon$ further.
 
 \begin{figure}
     \centering
@@ -284,7 +303,7 @@ Five isotopes were decided on as test cases for the algorithm: $^{238}\text{U}$,
         \caption{$^{212}\text{Po}$}
         \label{subfig:density_po212}
     \end{subfigure}
-    \caption{Non-normalised squared absolute value of the wave function for the different isotopes. Parameters used: $\tilde R = 1.35$, $V_0 = - 134\,\text{MeV}$, 2000 bins. The wave function appears to be consistent with the continuity requirements imposed on it. The potential is also shown, here it is important to note that at $r=R_\text{C}$, the plot essentially assumes that the potential remains at a constant value and does not fall further.}
+    \caption{Non-normalised squared absolute value of the wave function for the different isotopes. Parameters used: $\tilde R = 1.35$, $V_0 = - 134\,\text{MeV}$, 2000 bins. The wave function appears to be consistent with the continuity requirements imposed on it. For the lighter isotopes, the coulomb potential falls below $E_\alpha$ earlier and the solution decays faster. The potential is also shown, here it is important to note that at $r=R_\text{C}$, the plot essentially assumes that the potential remains at a constant value and does not fall further.}
     \label{fig:density}
 \end{figure}
 
@@ -338,21 +357,21 @@ Five isotopes were decided on as test cases for the algorithm: $^{238}\text{U}$,
         \caption{$^{212}\text{Po}$}
         \label{subfig:v0_po212}
     \end{subfigure}
-    \caption{Variation of the numerically estimated half life with the depth of the potential well $V_0$ for two selected isotopes. It can be seen that, compared to $\tilde R$, $t_{1/2}$ varies slowly with $V_0$ even over a large range of potentials, one can not tune it such that the predicted half-lives agree with experiment.}
+    \caption{Variation of the numerically estimated half life with the depth of the potential well $V_0$ for two selected isotopes. It can be seen that, compared to $\tilde R$, $t_{1/2}$ varies slowly with $V_0$ even over a large range of potentials. There is a minimum in predicted half-life for a value of $V_0$ slightly lower than zero. }
     \label{fig:v0}
 \end{figure}
 
 \begin{table}
     \centering
-    \caption{Numerically estimated half-lives and relative errors with respect to experimental values.}
-    \begin{tabular}{c|cc}
-        Isotope & Numerical half-life (s) & relative error \\
+    \caption{Numerically estimated half-lives and relative errors with respect to experimental values. Atomic masses according to \cite{Wolfram}. All isotopes are almost pure alpha emitters according to \cite{Wolfram} with branching ratios $\gg 99.9\%$.}
+    \begin{tabular}{c|cccc}
+        Isotope & Decay product & Atomic mass (MeV) & Numerical half-life (s) & relative error \\
         \hline
-        $^{238}\text{U}$ & $4.68\cdot 10^{17}$ & 2.32 \\ 
-        $^{235}\text{U}$ & $2.81\cdot 10^{15}$ & 0.87 \\ 
-        $^{232}\text{Th}$ & $5.60\cdot 10^{17}$ & 0.27 \\
-        $^{222}\text{Rn}$ & $2.83\cdot 10^{8}$ & 856 \\
-        $^{212}\text{Po}$ & $1.31\cdot 10^{2}$ & 44500 \\        
+        $^{238}\text{U}$ & $^{234}\text{Th}$ & 221742.90 & $4.68\cdot 10^{17}$ & 2.32 \\ 
+        $^{235}\text{U}$ & $^{231}\text{Th}$ & 218942.03 & $2.81\cdot 10^{15}$ & 0.87 \\ 
+        $^{232}\text{Th}$ & $^{228}\text{Ra}$ & 216142.08 & $5.60\cdot 10^{17}$ & 0.27 \\
+        $^{222}\text{Rn}$ & $^{218}\text{Po}$ & 206808.06 & $2.83\cdot 10^{8}$ & 856 \\
+        $^{212}\text{Po}$ & $^{208}\text{Po}$ & 197466.38 & $1.31\cdot 10^{2}$ & 44500 \\        
     \end{tabular}
     \label{tab:result}
 \end{table}
@@ -360,13 +379,14 @@ Five isotopes were decided on as test cases for the algorithm: $^{238}\text{U}$,
 \begin{figure}
     \centering
     \includegraphics[width=0.8\textwidth]{../plots/summary_t.pdf}
-    \caption{Summary of the best predicted values for the half-lives compared to experiment. Notably, the prediction for the heavy isotopes is within one order of magnitude. For the lighter isotopes, the error becomes larger as the value of the true half-lives becomes increasingly small. Notably, the model is able to reproduce the qualitative result that, within a small range of parameters, the half-life varies over many orders of magnitude. $^{235}\text{U}$ is the only isotope for which the predicted value is lower than the experimental one, this may be connected to the fact that it is the only odd-numbered isotope considered.}
+    \caption{Summary of the best predicted values for the half-lives compared to experiment. Notably, the prediction for the heavy isotopes is within one order of magnitude. For the lighter isotopes, the error becomes larger as the value of the true half-lives becomes increasingly small. The model is able to reproduce the qualitative result that, within a small range of parameters, the half-life varies over many orders of magnitude. $^{235}\text{U}$ is the only isotope for which the predicted value is lower than the experimental one, this may be connected to the fact that it is the only odd-numbered isotope considered.}
     \label{fig:summary}
 \end{figure}
 
 
 
 \section{Conclusion}
+In this analysis, qualitative predictions on the alpha decay of five different isotopes could be made. The model used was tested with regard to its numeric stability and the effects of the two main physical parameters were studied. The model is seen to lack sophistication to make accurate quantitative predictions, as expected.
 
 \newpage
 \FloatBarrier
