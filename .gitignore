@@ -12,6 +12,7 @@ env
 *.run.xml 
 *.synctex.gz 
 *.toc
+*.blg
 
 
 # Github template:
