@@ -39,7 +39,7 @@ def pressure_height(n, T, h_max) -> float64[:]: # type: ignore
     Ps[2] = Ps[1] + dh + (-3/2 * Ps[1] * M_AIR / (K_B * T) * grav(hs[1]) \
                           +1/2 * Ps[0] * M_AIR / (K_B * T) * grav(hs[0]) ) # Two Step Adams–Bashforth
 
-    for i, h in enumerate(hs, 3): # skip i == 0 TODO testing
+    for i, h in enumerate(hs, 3): # skip i == 0
         # three step Adams–Bashforth
         Ps[i] = Ps[i-1] + dh * (- 23/12 * Ps[i-1] * M_AIR / (K_B * T) * grav(hs[i-1]) \
                                 + 16/12 * Ps[i-2] * M_AIR / (K_B * T) * grav(hs[i-2]) \
@@ -98,3 +98,65 @@ def temps_visible_light_absorption(alphas, n, T, h_max, surface_albedo=0):
     return Ts
 
 # TODO: then implement re-absorption etc?
+@njit
+def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
+    # input alphas as attenuation coeffs
+    sigma_V  = alpha_V  / RHO_0
+    sigma_IR = alpha_IR / RHO_0
+
+    dh: float = h_max / n
+    Es       = np.zeros(n+1, dtype=np.double) # +3 for init vals
+    Ts_in_V  = np.zeros(n+1, dtype=np.double)
+    Ts_in_IR = np.zeros(n+1, dtype=np.double)
+    Ts_out   = np.zeros(n+1, dtype=np.double)
+    rhos = density_height(n, T, h_max) # need to use different index for this later
+
+    # init
+    # Es[0], Es[1] can remain zero because there is no absorption w/o the atmosphere!
+    Ts_in_V[-1] = 1
+    Ts_in_V[-2] = 1
+    Ts_in_V[-3] = 1
+    Ts_in_IR[-1] = 1
+    Ts_in_IR[-2] = 1
+    Ts_in_IR[-3] = 1
+    Ts_out[-1] = 1 # TODO is this correct? I think there should be as much going in as out
+    Ts_out[-2] = 1
+    Ts_out[-3] = 1
+
+
+    for i in range(2, n+2): # iterate backwards
+        j = -i + 1 # density index
+        if i != n+1:
+            Ts_in_V[-i]  =               Ts_in_V[-i + 1]           * np.exp(-sigma_V  * rhos[j] * dh)
+            Ts_in_IR[-i] =   (Ts_in_IR[-i + 1] + 1/2 * Es[-i + 1]) * np.exp(-sigma_IR * rhos[j] * dh)
+            Ts_out[-i]   =   (Ts_out[-i - 1]   + 1/2 * Es[-i - 1]) * np.exp(-sigma_IR * rhos[j] * dh)
+
+            
+            Es[-i]       =    (1/2 * (Es[-i + 1] + Es[-i - 1]) + Ts_out[-i - 1] + Ts_in_IR[-i + 1]) \
+                            * (1 - np.exp(-sigma_IR * rhos[j] * dh)) \
+                            + Ts_in_V[-i + 1] * (1 - np.exp(-sigma_V * rhos[j] * dh))
+        else:
+            Ts_in_V[-i]  =               Ts_in_V[-i + 1]           * np.exp(-sigma_V  * rhos[j] * dh)
+            Ts_in_IR[-i] =   (Ts_in_IR[-i + 1] + 1/2 * Es[-i + 1]) * np.exp(-sigma_IR * rhos[j] * dh)
+            Ts_out[-i]   =   0.0
+
+            
+            Es[-i]       =    (1/2 * Es[-i + 1] + Ts_in_IR[-i + 1]) * (1 - np.exp(-sigma_IR * rhos[j] * dh)) \
+                            + Ts_in_V[-i + 1] * (1 - np.exp(-sigma_V * rhos[j] * dh))
+
+
+    T = ((Es[0] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
+    print(Es[0])
+
+    return T
+
+@njit(parallel=True)
+def temps_full_model_vary_alpha_IR(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)  -> float64[:]:
+    n_Ts = len(alphas_IR)
+
+    Ts = np.zeros(n_Ts)
+
+    for i in prange(n_Ts):        
+        Ts[i] = temp_full_model(alpha_V, alphas_IR[i], n, T, h_max, surface_albedo=surface_albedo) - 273.15 # ° C
+
+    return Ts
