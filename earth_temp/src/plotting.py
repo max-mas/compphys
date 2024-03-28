@@ -70,7 +70,7 @@ def plot_temps_visible_absorption(alphas, n, T, h_max, path, surface_albedos=[0]
         Ts = physics.temps_visible_light_absorption(alphas, n, T, h_max, surface_albedo=surface_albedo)
         ax.plot(alphas, Ts - 273.15, label=f"$T$, $\\epsilon={surface_albedo}$")
 
-    ax.set_xlabel("$\\alpha$")
+    ax.set_xlabel("$\\alpha$ ($1/\\text{m}$)")
     ax.set_ylabel("Surface temperature $T$ (° C)")
     ax.set_xlim([alphas[0], alphas[-1]])
     ax.ticklabel_format(axis="x", style="sci", scilimits=(-3, 6))

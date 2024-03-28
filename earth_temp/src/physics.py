@@ -12,7 +12,7 @@ P_0 = 101325 # Pa, sea level pressure
 M_AIR = 4.809e-26 # kg, molecular mass of air
 SBC = 5.670367e-8 # W m^-2 K^-4 stefan boltzmann constant
 SUN_FLUX = 344 # W m^-2
-EARTH_ALBEDO = 0.3
+EARTH_ALBEDO = 0.33
 
 # TODO start with calculating density numerically (not explicitly w/ barometric formula)
 
