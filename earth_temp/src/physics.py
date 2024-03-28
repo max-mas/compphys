@@ -35,11 +35,15 @@ def pressure_height(n, T, h_max) -> float64[:]: # type: ignore
     hs = np.linspace(0, h_max, n)
     Ps = np.zeros(n, dtype=np.double)
     Ps[0] = P_0
+    Ps[1] = Ps[0] + dh * -Ps[0] * M_AIR / (K_B * T) * grav(hs[0]) # Euler step
+    Ps[2] = Ps[1] + dh + (-3/2 * Ps[1] * M_AIR / (K_B * T) * grav(hs[1]) \
+                          +1/2 * Ps[0] * M_AIR / (K_B * T) * grav(hs[0]) ) # Two Step Adams–Bashforth
 
-    for i, h in enumerate(hs, 1): # skip i == 0
-        g = grav(h)
-        dP = - Ps[i-1] * M_AIR / (K_B * T) * g * dh
-        Ps[i] = Ps[i-1] + dP
+    for i, h in enumerate(hs, 3): # skip i == 0 TODO testing
+        # three step Adams–Bashforth
+        Ps[i] = Ps[i-1] + dh * (- 23/12 * Ps[i-1] * M_AIR / (K_B * T) * grav(hs[i-1]) \
+                                + 16/12 * Ps[i-2] * M_AIR / (K_B * T) * grav(hs[i-2]) \
+                                -  5/12 * Ps[i-3] * M_AIR / (K_B * T) * grav(hs[i-3]) )
 
     return Ps
 
@@ -56,8 +60,7 @@ def density_height(n, T, h_max) -> float64[:]: # type: ignore
     return rhos
 
 
-# dI / dx = - sigma * rho * I
-# => dI = - sigma * rho * I * dx
+# not necessary to solve deq, instead use solution
 @njit
 def visible_intensity(alpha, T, n, h_max):
     # input alpha as attenuation coeff
@@ -70,11 +73,7 @@ def visible_intensity(alpha, T, n, h_max):
     Is[-1] = 1 # I at inf = h_max == I_0 = 1
 
     for i in range(2, n+1): # iterate backwards
-        dI = sigma * rhos[-i] * dh 
-        Is[-i] = Is[-i + 1] - dI
-        if Is[-i] < 0:            
-            Is[-i] = 0
-            break # ensure I > = 0, attenuation may be strong enough to block everything)
+        Is[-i] = Is[-i + 1] * np.exp(-sigma * rhos[-i] * dh)
 
     return Is
 
