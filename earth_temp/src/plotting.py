@@ -78,3 +78,89 @@ def plot_temps_visible_absorption(alphas, n, T, h_max, path, surface_albedos=[0]
 
     fig.savefig(path)
     plt.close(fig)
+
+
+def plot_temps_full_N(alpha_V, alpha_IR, ns, T, h_max, path, surface_albedo=0):
+    Ts = physics.temps_full_model_vary_N(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(ns, Ts, label="$\\alpha_\\text{IR}=" + f"{alpha_IR}$" + ", $T_{n_\\text{max}}" + f"={np.round(Ts[-1], 1)}$ K")
+    ax.set_xlabel("Number of layers $n$")
+    ax.set_ylabel("Surface temperature $T$ (K)")
+    ax.set_xscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_temps_full_alpha_IR(alpha_V, alphas_IR, n, T, h_max, path, surface_albedo=0):
+    Ts = physics.temps_full_model_vary_alpha_IR(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(alphas_IR, Ts, label=f"$n={n}$")
+    ax.set_xlabel("$\\alpha_\\text{IR}$")
+    ax.set_ylabel("Surface temperature $T$ (K)")
+    ax.set_xscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_temps_full_mat_N(alpha_V, alpha_IR, ns, T, h_max, path, surface_albedo=0):
+    Ts = physics.temps_full_model_vary_N_mat(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(ns, Ts, label="$\\alpha_\\text{IR}=" + f"{alpha_IR}$" + ", $T_{n_\\text{max}}" + f"={Ts[-1]}$° C")
+    ax.set_xlabel("Number of layers $n$")
+    ax.set_ylabel("Surface temperature $T$ (° C)")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_temps_full_mat_alpha_IR(alpha_V, alphas_IR, n, T, h_max, path, surface_albedo=0):
+    Ts = physics.temps_full_model_vary_alpha_IR_mat(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(alphas_IR, Ts, label=f"$n={n}$")
+    ax.set_xlabel("$\\alpha_\\text{IR}$")
+    ax.set_ylabel("Surface temperature $T$ (° C)")
+    #ax.set_xscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_temps_full_comp_N(alpha_V, alpha_IR, ns, T, h_max, path, surface_albedo=0):
+    Ts_mat = physics.temps_full_model_vary_N_mat(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)
+    Ts_it = physics.temps_full_model_vary_N(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(ns, Ts_mat, label="$\\alpha_\\text{IR}=" + f"{alpha_IR}$" + ", $T_{n_\\text{max}}" + f"={np.round(Ts_mat[-1], 1)}$° C, matrix method")
+    ax.plot(ns, Ts_it, label="$\\alpha_\\text{IR}=" + f"{alpha_IR}$" + ", $T_{n_\\text{max}}" + f"={np.round(Ts_it[-1], 1)}$° C, iterative method")
+    ax.set_xlabel("Number of layers $n$")
+    ax.set_ylabel("Surface temperature $T$ (° C)")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_temps_full_comp_alpha_IR(alpha_V, alphas_IR, n, T, h_max, path, surface_albedo=0):
+    Ts_mat = physics.temps_full_model_vary_alpha_IR_mat(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)
+    Ts_it = physics.temps_full_model_vary_alpha_IR(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)
+
+    fig, ax = plt.subplots()
+    ax.plot(alphas_IR, Ts_mat, label=f"$n={n}$, matrix method")
+    ax.plot(alphas_IR, Ts_it, label=f"$n={n}$, iterative method")
+    ax.set_xlabel("$\\alpha_\\text{IR}$")
+    ax.set_ylabel("Surface temperature $T$ (° C)")
+    ax.set_xscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
