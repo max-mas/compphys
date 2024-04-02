@@ -64,7 +64,7 @@ def density_height(n, T, h_max) -> float64[:]: # type: ignore
 
 # not necessary to solve deq, instead use solution
 @njit
-def visible_intensity(alpha, T, n, h_max):
+def visible_intensity(alpha: float, n: int, T: float, h_max: float):
     # input alpha as attenuation coeff
     sigma = alpha / RHO_0
 
@@ -101,7 +101,7 @@ def temps_visible_light_absorption(alphas, n, T, h_max, surface_albedo=0):
 
 # TODO: then implement re-absorption etc?
 @njit
-def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
+def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps = 10)  -> float:
     # input alphas as attenuation coeffs
     sigma_V  = alpha_V  / RHO_0
     sigma_IR = alpha_IR / RHO_0
@@ -115,8 +115,7 @@ def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
 
     # init
     Ts_in_V[-1] = 1    
-
-    n_sweeps = 10
+    
     for s in range(n_sweeps):
         for i in range(2, n+1): # iterate backwards
             j = -i + 1 # density index
@@ -129,10 +128,7 @@ def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
                         + Ts_in_V[-i + 1] * (1 - np.exp(-sigma_V * rhos[j] * dh))                   
 
         #try bottom layer as black body ground
-        Es[0] = 1/2 * Es[1] + Ts_in_IR[1]
-                
-                #Es[-i]  = (1/2 * Es[-i + 1] + Ts_in_IR[-i + 1]) * (1 - np.exp(-sigma_IR * rhos[j] * dh)) \
-                #          + Ts_in_V[-i + 1] * (1 - np.exp(-sigma_V * rhos[j] * dh)) # TODO valid?
+        Es[0] = 1/2 * Es[1] + Ts_in_IR[1] + Ts_in_V[1] # Ts_in_
                 
         Ts_out[0] = Es[0] # black body
         for i in range(1, n): # iterate forwards
@@ -140,9 +136,22 @@ def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
         Ts_out[-1]      = Ts_out[-2]
 
     T = ((Es[0] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
-    print(Es[0], Ts_out[-1])
+    print("It. Outgoing:", Ts_out[-1])
 
     return T
+
+
+@njit(parallel=True)
+def temps_full_model_vary_sweeps(alpha_V, alpha_IR, n, T, h_max, n_sweeps_arr, surface_albedo=0):
+    n_Ts = len(n_sweeps_arr)
+
+    Ts = np.zeros(n_Ts)
+
+    for i in prange(n_Ts):        
+        Ts[i] = temp_full_model(alpha_V, alpha_IR, n, T, h_max, n_sweeps=n_sweeps_arr[i], surface_albedo=surface_albedo) - 273.15# ° C
+
+    return Ts
+
 
 @njit(parallel=True)
 def temps_full_model_vary_alpha_IR(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)  -> float64[:]:
@@ -151,22 +160,22 @@ def temps_full_model_vary_alpha_IR(alpha_V, alphas_IR, n, T, h_max, surface_albe
     Ts = np.zeros(n_Ts)
 
     for i in prange(n_Ts):        
-        Ts[i] = temp_full_model(alpha_V, alphas_IR[i], n, T, h_max, surface_albedo=surface_albedo) # K
+        Ts[i] = temp_full_model(alpha_V, alphas_IR[i], n, T, h_max, surface_albedo=surface_albedo) - 273.15# ° C
 
     return Ts
 
-#@njit(parallel=True)
+@njit(parallel=True)
 def temps_full_model_vary_N(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)  -> float64[:]:
     n_Ts = len(ns)
 
     Ts = np.zeros(n_Ts)
 
-    for i in tqdm(range(n_Ts)):         # TODO parallel
-        Ts[i] = temp_full_model(alpha_V, alpha_IR, ns[i], T, h_max, surface_albedo=surface_albedo) # K
+    for i in prange(n_Ts):         # TODO parallel
+        Ts[i] = temp_full_model(alpha_V, alpha_IR, ns[i], T, h_max, surface_albedo=surface_albedo) -273.15 # ° C
     return Ts
 
 
-#@njit
+@njit
 def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
     # input alphas as attenuation coeffs
     sigma_V  = alpha_V  / RHO_0
@@ -199,8 +208,8 @@ def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albe
         coeffmat[j, j] = 1
 
     # T out
-    coeffmat[2*n+2, 2*n+2] = 1 # lowest layer has no incoming IR?
-    coeffmat[2*n+2, 3*n+3] = -0.5 * np.exp(-sigma_IR  * rhos[0] * dh)
+    coeffmat[2*n+2, 2*n+2] = 1 # lowest layer emits as black body
+    coeffmat[2*n+2, 3*n+3] = -1
     coeffmat[3*n+2, 3*n+2] = 1 # outgoing IR = 1
     b[3*n+2] = 1
     for i in range(1, n):
@@ -211,10 +220,10 @@ def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albe
         coeffmat[j, j] = 1
     
     # E
-    coeffmat[3*n + 3, 3*n + 3] = -1 # lower layer does not emit into ground
-    coeffmat[3*n + 3, 3*n + 4] = (1 - np.exp(-sigma_IR  * rhos[0] * dh))
-    coeffmat[3*n + 3,   n + 2] = (1 - np.exp(-sigma_IR  * rhos[0] * dh))
-    coeffmat[3*n + 3,       1] = (1 - np.exp(-sigma_V  * rhos[0] * dh)) 
+    coeffmat[3*n + 3, 3*n + 3] = -1 # lower layer is black body
+    coeffmat[3*n + 3, 3*n + 4] = 0.5
+    coeffmat[3*n + 3,   n + 2] = 1
+    coeffmat[3*n + 3,       1] = 1 
 
     coeffmat[4*n + 3, 4*n + 3] = 1 # space has E = 0
     for i in range(1, n):
@@ -227,14 +236,11 @@ def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albe
         coeffmat[m, m + 1] = 0.5 * (1 - np.exp(-sigma_IR  * rhos[i] * dh))
         coeffmat[m, l - 1] = (1 - np.exp(-sigma_IR  * rhos[i] * dh))
         coeffmat[m, k + 1] = (1 - np.exp(-sigma_IR  * rhos[i] * dh))
-        coeffmat[m, j + 1] = (1 - np.exp(-sigma_V  * rhos[i] * dh))    
+        coeffmat[m, j + 1] = (1 - np.exp(-sigma_V  * rhos[i] * dh))
 
     x = np.linalg.solve(coeffmat, b)
-    #x = scipy.optimize.lsq_linear(coeffmat, b, bounds=(0, np.inf)).x
     T = ((x[3*n + 3] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
-    #print(x[3*n:3*n + 6], x[3*n + 3])
-    #print(x[3*n + 3]) # TODO check if possible to fix outgoing radiation
-    print(f"||Ax - b|| = { np.linalg.norm(coeffmat @ x - b) }")
+    print("Mat. ||Ax - b|| = ", np.linalg.norm(coeffmat @ x - b), "Outgoing:", x[3*n+2], "E:", x[3*n + 3])
 
     return T
 
@@ -244,7 +250,7 @@ def temps_full_model_vary_alpha_IR_mat(alpha_V, alphas_IR, n, T, h_max, surface_
 
     Ts = np.zeros(n_Ts)
 
-    for i in tqdm(range(n_Ts)):        
+    for i in range(n_Ts):        
         Ts[i] = temp_full_model_matrix_approach(alpha_V, alphas_IR[i], n, T, h_max, surface_albedo=surface_albedo) - 273.15 # ° C
 
     return Ts
@@ -254,7 +260,7 @@ def temps_full_model_vary_N_mat(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=
 
     Ts = np.zeros(n_Ts)
 
-    for i in tqdm(range(n_Ts)):        
+    for i in range(n_Ts):
         Ts[i] = temp_full_model_matrix_approach(alpha_V, alpha_IR, ns[i], T, h_max, surface_albedo=surface_albedo) - 273.15 # ° C
 
     return Ts
