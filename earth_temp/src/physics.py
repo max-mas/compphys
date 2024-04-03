@@ -101,7 +101,7 @@ def temps_visible_light_absorption(alphas, n, T, h_max, surface_albedo=0):
 
 # TODO: then implement re-absorption etc?
 @njit
-def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps = 10)  -> float:
+def temps_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps = 15):
     # input alphas as attenuation coeffs
     sigma_V  = alpha_V  / RHO_0
     sigma_IR = alpha_IR / RHO_0
@@ -134,11 +134,16 @@ def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps =
         for i in range(1, n): # iterate forwards
             Ts_out[i]   =   (Ts_out[i - 1]   + 1/2 * Es[i - 1]) * np.exp(-sigma_IR * rhos[i] * dh)
         Ts_out[-1]      = Ts_out[-2]
+        Es[-1] = Es[-2] # TODO thermal eq. with space
 
-    T = ((Es[0] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
-    print("It. Outgoing:", Ts_out[-1])
+    Ts = ((Es * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
+    print("It. Outgoing:", Ts_out[-1]) # TODO why is this not 1? :(
 
-    return T
+    return Ts
+
+@njit
+def temp_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps = 15):
+    return temps_full_model(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0, n_sweeps=n_sweeps)[0]
 
 
 @njit(parallel=True)
@@ -176,7 +181,7 @@ def temps_full_model_vary_N(alpha_V, alpha_IR, ns, T, h_max, surface_albedo=0)  
 
 
 @njit
-def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)  -> float:
+def temps_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0):
     # input alphas as attenuation coeffs
     sigma_V  = alpha_V  / RHO_0
     sigma_IR = alpha_IR / RHO_0 # TODO verify
@@ -225,7 +230,9 @@ def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albe
     coeffmat[3*n + 3,   n + 2] = 1
     coeffmat[3*n + 3,       1] = 1 
 
-    coeffmat[4*n + 3, 4*n + 3] = 1 # space has E = 0
+    #coeffmat[4*n + 3, 4*n + 3] = 1 # space has E = 0 TODO maybe not?
+    coeffmat[4*n + 3, 4*n + 3] = 1
+    coeffmat[4*n + 3, 4*n + 2] = -1 # thermal equilibrium with space?
     for i in range(1, n):
         j = i + 0 * (n + 1) # in v
         k = i + 1 * (n + 1) # in ir
@@ -239,10 +246,15 @@ def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albe
         coeffmat[m, j + 1] = (1 - np.exp(-sigma_V  * rhos[i] * dh))
 
     x = np.linalg.solve(coeffmat, b)
-    T = ((x[3*n + 3] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
+    Ts = ((x[3*n + 3:-1] * (1 - EARTH_ALBEDO) * SUN_FLUX) / SBC) ** (1/4)
     print("Mat. ||Ax - b|| = ", np.linalg.norm(coeffmat @ x - b), "Outgoing:", x[3*n+2], "E:", x[3*n + 3])
 
-    return T
+    return Ts
+
+
+@njit
+def temp_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0):
+    return temps_full_model_matrix_approach(alpha_V, alpha_IR, n, T, h_max, surface_albedo=0)[0]
 
 
 def temps_full_model_vary_alpha_IR_mat(alpha_V, alphas_IR, n, T, h_max, surface_albedo=0)  -> float64[:]:
