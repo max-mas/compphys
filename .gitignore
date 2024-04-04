@@ -1,6 +1,8 @@
 # Own directories:
 env
 .vscode
+.idea
+./eig_1/src/cmake-build-debug
 
 # latex stuff
 *.aux
