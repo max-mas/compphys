@@ -3,7 +3,15 @@ project(eig1)
 
 set(CMAKE_CXX_STANDARD 17)
 
-include_directories(~/eigen/eigen/)
+find_package(Eigen3 3.4 REQUIRED NO_MODULE)
 
 add_executable(eig1
-        "./c/main.cpp")
+        "./c/main.cpp"
+        c/discrete_hamiltonian.h
+        c/discrete_hamiltonian.cpp
+        c/potentials.cpp
+        c/potentials.h
+        c/potentials.cpp
+)
+
+target_link_libraries(eig1 Eigen3::Eigen)
