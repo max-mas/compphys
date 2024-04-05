@@ -7,10 +7,14 @@
 
 #include <Eigen/Dense>
 #include <functional>
+#include <vector>
 
-const Eigen::MatrixXd discrete_hamiltonian(const double x_max,
-                                           const long num_bins,
-                                           std::function<double (double)> potential);
+Eigen::MatrixXd discrete_hamiltonian(  double x_max,
+                                       long num_bins,
+                                       const std::function<double (double)>& potential);
 
+const std::vector<Eigen::VectorXd> discrete_hamiltonian_tridiagonals(double x_max,
+                                                               long num_bins,
+                                                               const std::function<double (double)>& potential);
 
 #endif //EIG1_DISCRETE_HAMILTONIAN_H

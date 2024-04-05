@@ -70,6 +70,20 @@ build CMakeFiles/eig1.dir/c/potentials.cpp.o: CXX_COMPILER__eig1_unscanned_Debug
   OBJECT_DIR = CMakeFiles/eig1.dir
   OBJECT_FILE_DIR = CMakeFiles/eig1.dir/c
 
+build CMakeFiles/eig1.dir/c/solve.cpp.o: CXX_COMPILER__eig1_unscanned_Debug /home/max/code/compphys/eig_1/src/c/solve.cpp || cmake_object_order_depends_target_eig1
+  DEP_FILE = CMakeFiles/eig1.dir/c/solve.cpp.o.d
+  FLAGS = -g -std=gnu++17 -fdiagnostics-color=always
+  INCLUDES = -isystem /usr/local/include/eigen3
+  OBJECT_DIR = CMakeFiles/eig1.dir
+  OBJECT_FILE_DIR = CMakeFiles/eig1.dir/c
+
+build CMakeFiles/eig1.dir/c/out.cpp.o: CXX_COMPILER__eig1_unscanned_Debug /home/max/code/compphys/eig_1/src/c/out.cpp || cmake_object_order_depends_target_eig1
+  DEP_FILE = CMakeFiles/eig1.dir/c/out.cpp.o.d
+  FLAGS = -g -std=gnu++17 -fdiagnostics-color=always
+  INCLUDES = -isystem /usr/local/include/eigen3
+  OBJECT_DIR = CMakeFiles/eig1.dir
+  OBJECT_FILE_DIR = CMakeFiles/eig1.dir/c
+
 
 # =============================================================================
 # Link build statements for EXECUTABLE target eig1
@@ -78,7 +92,7 @@ build CMakeFiles/eig1.dir/c/potentials.cpp.o: CXX_COMPILER__eig1_unscanned_Debug
 #############################################
 # Link the executable eig1
 
-build eig1: CXX_EXECUTABLE_LINKER__eig1_Debug CMakeFiles/eig1.dir/c/main.cpp.o CMakeFiles/eig1.dir/c/discrete_hamiltonian.cpp.o CMakeFiles/eig1.dir/c/potentials.cpp.o
+build eig1: CXX_EXECUTABLE_LINKER__eig1_Debug CMakeFiles/eig1.dir/c/main.cpp.o CMakeFiles/eig1.dir/c/discrete_hamiltonian.cpp.o CMakeFiles/eig1.dir/c/potentials.cpp.o CMakeFiles/eig1.dir/c/solve.cpp.o CMakeFiles/eig1.dir/c/out.cpp.o
   FLAGS = -g
   OBJECT_DIR = CMakeFiles/eig1.dir
   POST_BUILD = :

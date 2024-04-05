@@ -12,6 +12,10 @@ add_executable(eig1
         c/potentials.cpp
         c/potentials.h
         c/potentials.cpp
+        c/solve.cpp
+        c/solve.h
+        c/out.cpp
+        c/out.h
 )
 
 target_link_libraries(eig1 Eigen3::Eigen)
