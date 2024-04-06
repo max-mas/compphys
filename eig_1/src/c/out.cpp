@@ -30,7 +30,7 @@ const void evecs_to_file(const Eigen::MatrixXd & evecs, const std::string & path
     for (int i = 0; i < n; i++) {
         for (int j = 0; j < n; j++) {
             file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
-                 << std::scientific << evecs(i, j) << ",";
+                 << std::scientific << evecs(j, i) << ",";
         }
         file << std::endl;
     }

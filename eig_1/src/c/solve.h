@@ -14,10 +14,22 @@ Eigen::VectorXd solve_basic(double x_max, long num_bins,
 const std::vector<Eigen::MatrixXd> solve_basic_full(double x_max, long num_bins,
                                               const std::function<double (double)>& potential);
 
+const std::vector<Eigen::MatrixXd> solve_five_point_full(double x_max, long num_bins,
+                                                         const std::function<double (double)>& potential);
+
+Eigen::VectorXd solve_five_point_parity(double x_max, long num_bins,
+                                        const std::function<double (double)>& potential);
+
+const std::vector<Eigen::MatrixXd> solve_five_point_parity_full(double x_max, long num_bins,
+                                                           const std::function<double (double)>& potential);
+
 Eigen::VectorXd solve_from_tridiag(double x_max, long num_bins,
                                    const std::function<double (double)>& potential);
 
 const std::vector<Eigen::MatrixXd> solve_from_tridiag_full(double x_max, long num_bins,
                                                      const std::function<double (double)>& potential);
+
+const std::vector<Eigen::MatrixXd> solve_from_tridiag_parity_full(double x_max, long num_bins,
+                                                           const std::function<double (double)>& potential);
 
 #endif //EIG1_SOLVE_H
