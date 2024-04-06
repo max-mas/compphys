@@ -17,9 +17,9 @@
 #include "inverse_iteration.h"
 
 int main() {
-    std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic);
-    evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_test.txt");
-    evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_test.txt");
+    std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic_bump);
+    evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_bump.txt");
+    evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_bump.txt");
 
 
     /*
