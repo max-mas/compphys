@@ -24,11 +24,12 @@ const void evecs_to_file(const Eigen::MatrixXd & evecs, const std::string & path
     std::ofstream file;
     file.open(path);
 
-    int n = evecs.rows();
+    int n_vecs = evecs.cols();
+    int n_dim = evecs.rows();
 
     //get all digts
-    for (int i = 0; i < n; i++) {
-        for (int j = 0; j < n; j++) {
+    for (int i = 0; i < n_vecs; i++) {
+        for (int j = 0; j < n_dim; j++) {
             file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
                  << std::scientific << evecs(j, i) << ",";
         }

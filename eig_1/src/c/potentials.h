@@ -7,8 +7,18 @@
 
 #include <cmath>
 
+/**
+ * Harmonic potential.
+ * @param z Dimensionless distance from the origin.
+ * @return V in units of hbar omega.
+ */
 const double harmonic(const double z);
 
+/**
+ * Modified harmonic potential.
+ * @param z Dimensionless distance from the origin.
+ * @return V in units of hbar omega.
+ */
 const double harmonic_bump(const double z);
 
 #endif //EIG1_POTENTIALS_H

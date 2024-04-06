@@ -15,20 +15,21 @@ plt.rcParams.update({
 })
 
 # globals
-x_max = 10
-method_names = ["3 point", "3 point tridiag", "3 point tridiag parity", "5 point", "5 point parity"]
+x_max = 20
+method_names = ["3 point full", "3 point tridiag full", "3 point tridiag parity full",
+                "5 point full", "5 point parity full", "5 point parity inverse it. (GS only)"]
 
 
 def main():
-    #evs = load_evals("../../results/evs/evs_test.txt")
-    #plot_evals(evs, "../../plots/evals/evals.pdf")
-    #evecs = load_evecs("../../results/evecs/evecs_test.txt", 10)
-    #plot_evecs(evecs, "../../plots/states/states_test.pdf", energies=evs)
+    evs = load_evals("../../results/evs/evs_test.txt")
+    plot_evals(evs, "../../plots/evals/evals.pdf")
+    evecs = load_evecs("../../results/evecs/evecs_test.txt", 10)
+    plot_evecs(evecs, "../../plots/states/states_test.pdf", energies=evs)
 
-    ns, times = load_bench_times("../../results/bench/bench_time.txt.txt")
-    plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
-    ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
-    plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
+    #ns, times = load_bench_times("../../results/bench/bench_time.txt")
+    #plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
+    #ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
+    #plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
 
     return 0
 
@@ -147,7 +148,7 @@ def plot_bench_errs(ns, errs, path):
         ax.plot(ns, errs_method, label=method_names[i])
 
     ax.set_xlabel("Number of bins $n$")
-    ax.set_ylabel("GS Energy error ($\\hbar\\oemga$)")
+    ax.set_ylabel("GS energy error ($\\hbar\\omega$)")
     ax.set_yscale("log")
     ax.set_xscale("log")
     ax.legend()

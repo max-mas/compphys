@@ -19,6 +19,8 @@ add_executable(eig1
         c/out.h
         c/benchmark.cpp
         c/benchmark.h
+        c/inverse_iteration.cpp
+        c/inverse_iteration.h
 )
 
 target_link_libraries(eig1 PUBLIC Eigen3::Eigen OpenMP::OpenMP_CXX)

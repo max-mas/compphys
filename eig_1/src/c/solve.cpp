@@ -4,19 +4,9 @@
 
 #include <Eigen/Eigenvalues>
 
-//#include <openmp.h>
-
 #include "solve.h"
 #include "potentials.h"
-
-
-Eigen::VectorXd solve_basic(double x_max, long num_bins,
-                            const std::function<double (double)>& potential) {
-    Eigen::MatrixXd H = discrete_hamiltonian(x_max, num_bins, potential);
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es;
-    es.compute(H, Eigen::EigenvaluesOnly);
-    return es.eigenvalues();
-}
+#include "inverse_iteration.h"
 
 const std::vector<Eigen::MatrixXd> solve_basic_full(double x_max, long num_bins,
                                                     const std::function<double (double)>& potential) {
@@ -32,22 +22,6 @@ const std::vector<Eigen::MatrixXd> solve_five_point_full(double x_max, long num_
     Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es;
     es.compute(H);
     return std::vector<Eigen::MatrixXd>({es.eigenvalues(), es.eigenvectors()});
-}
-
-Eigen::VectorXd solve_five_point_parity(double x_max, long num_bins,
-                                        const std::function<double (double)>& potential) {
-    std::vector<Eigen::MatrixXd> even_odd_H = discrete_hamiltonian_five_point_parity(x_max, num_bins, potential);
-    Eigen::VectorXd evs = Eigen::VectorXd::Zero(num_bins);
-
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es_even;
-    es_even.compute(even_odd_H[0]);
-    evs(Eigen::seq(0, num_bins/2 - 1)) = es_even.eigenvalues();
-
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es_odd;
-    es_odd.compute(even_odd_H[1]);
-    evs(Eigen::seq(num_bins / 2, num_bins - 1)) = es_odd.eigenvalues();
-
-    return evs;
 }
 
 const std::vector<Eigen::MatrixXd> solve_five_point_parity_full(double x_max, long num_bins,
@@ -90,16 +64,6 @@ const std::vector<Eigen::MatrixXd> solve_five_point_parity_full(double x_max, lo
     }
 
     return std::vector<Eigen::MatrixXd>({evs_sorted, evecs_sorted});
-}
-
-Eigen::VectorXd solve_from_tridiag(double x_max, long num_bins,
-                                   const std::function<double (double)>& potential) {
-    std::vector<Eigen::VectorXd> A = discrete_hamiltonian_tridiagonals(x_max, num_bins, potential);
-    Eigen::VectorXd & H_diag = A[0];
-    Eigen::VectorXd & H_subdiag = A[1];
-    Eigen::SelfAdjointEigenSolver<Eigen::MatrixXd> es;
-    es.computeFromTridiagonal(H_diag, H_subdiag, Eigen::EigenvaluesOnly);
-    return es.eigenvalues();
 }
 
 const std::vector<Eigen::MatrixXd> solve_from_tridiag_full(double x_max, long num_bins,
@@ -157,4 +121,12 @@ const std::vector<Eigen::MatrixXd> solve_from_tridiag_parity_full(double x_max, 
     }
 
     return std::vector<Eigen::MatrixXd>({evs_sorted, evecs_sorted});
+}
+
+const std::vector<Eigen::MatrixXd> get_gs_inverse_it(double x_max, long num_bins,
+                                                     const std::function<double (double)>& potential) {
+    std::vector<Eigen::MatrixXd> H_even_odd = discrete_hamiltonian_five_point_parity(x_max, num_bins, potential);
+    //shift of 0 gives the ground state (technically have to look at results to see which sector its in)
+    std::vector<double> shifts({0});
+    return inverse_iteration_parity(H_even_odd, shifts);
 }
