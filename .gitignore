@@ -6,6 +6,8 @@ env
 ./eig_1/src/cmake-build-release
 cmake-build-debug
 cmake-build-release
+# big eigenvector files don't have to be pushed
+./eig1/results/evecs/*
 
 # latex stuff
 *.aux
