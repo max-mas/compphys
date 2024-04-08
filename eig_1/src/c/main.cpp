@@ -18,15 +18,15 @@
 #include "inverse_iteration.h"
 
 int main() {
-    bool get_best_full_diag = false;
+    bool get_best_full_diag = true;
     bool get_best_inv_it = false;
-    bool bench_time = true;
+    bool bench_time = false;
     bool bench_xmax = false;
 
     if (get_best_full_diag) {
-        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic_bump);
-        evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_bump.txt");
-        evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_bump.txt");
+        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic);
+        evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_full_4000.txt");
+        evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_full_4000.txt");
     }
 
     if (get_best_inv_it) {
