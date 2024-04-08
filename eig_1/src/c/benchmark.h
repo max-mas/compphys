@@ -19,9 +19,16 @@
  * @param path Directory to which to write results.
  */
 void benchmark_full_ed(const std::vector<int> & bin_numbers,
+                       int avgs,
                        const std::vector<std::function<std::vector<Eigen::MatrixXd>
                                (double, long, const std::function<double (double)>&) >> & funcs,
                        const std::vector<std::string> & func_names,
                        const std::string & path);
+
+void benchmark_excited_state_accuracy_x_max(const std::vector<double> & x_maxs, int bin_number, int state,
+                                            const std::vector<std::function<std::vector<Eigen::MatrixXd>
+                                                    (double, long, const std::function<double (double)>&) >> & funcs,
+                                            const std::vector<std::string> & func_names,
+                                            const std::string & path);
 
 #endif //EIG1_BENCHMARK_H

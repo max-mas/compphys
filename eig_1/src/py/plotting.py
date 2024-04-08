@@ -23,17 +23,34 @@ method_names = ["3 point full", "3 point tridiag full", "3 point tridiag parity 
 
 
 def main():
+    """
     evs = load_evals("../../results/evs/evs_bump.txt")
     plot_evals_bump(evs, "../../plots/evals/evals_bump.pdf", i_max=100)
     evecs = load_evecs("../../results/evecs/evecs_bump.txt", 100)
     #plot_evecs(evecs,  "../../plots/states/states_bump.pdf", 5, energies=evs)
     plot_evec_orthonormality(evecs, "../../plots/orthonormal/orthonormality.pdf")
+    """
 
+    ns, times = load_bench_times("../../results/bench/bench_time_avgs_5.txt")
+    plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
+    ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
+    plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
 
-    #ns, times = load_bench_times("../../results/bench/bench_time.txt")
-    #plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
-    #ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
-    #plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
+    """
+    xs1, gs_errs = load_errs_xmax_bench("../../results/bench/bench_xmax_err_state0_n_1000.txt")
+    xs2, excited_errs = load_errs_xmax_bench("../../results/bench/bench_xmax_err_state50_n_1000.txt")
+    xs3, excited_errs_bigger_n = load_errs_xmax_bench("../../results/bench/bench_xmax_err_state50_n_2500.txt")
+    plot_xmax_bench_errs([xs1, xs2, xs3],
+                         [np.take(gs_errs, [4, 5], axis=0),
+                              np.take(excited_errs, [4], axis=0),
+                              np.take(excited_errs_bigger_n, [4], axis=0)],
+                         [0, 50, 50],
+                         [1000, 1000, 2500],
+                         [["5 point parity full", "5 point parity inverse it. (GS only)"],
+                          ["5 point parity full"],
+                          ["5 point parity full"]],
+                         "../../plots/bench/bench_xmax_err.pdf")
+    """
 
     return 0
 
@@ -170,6 +187,31 @@ def load_bench_times(path):
     return ns_np, times_np
 
 
+def load_errs_xmax_bench(path):
+    file = open(path)
+
+    head = next(file)
+    xmaxs_str = head.split(",")[:-1]
+    xmaxs = [float(xmax) for xmax in xmaxs_str]
+
+    errs = []
+    while True:
+        try:
+            line = next(file)
+            errs_str = line.split(",")[:-1]
+            errs_method = [float(time) for time in errs_str]
+            errs.append(errs_method)
+
+        except StopIteration:
+            break
+    file.close()
+
+    xmaxs_np = np.asarray(xmaxs)
+    errs_np = np.asarray(errs)
+
+    return xmaxs_np, errs_np
+
+
 def plot_bench_times(ns, times, path):
     fig, ax = plt.subplots()
     for i, times_method in enumerate(times):
@@ -197,6 +239,25 @@ def plot_bench_errs(ns, errs, path):
     ax.set_ylabel("GS energy error ($\\hbar\\omega$)")
     ax.set_yscale("log")
     ax.set_xscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+    plt.close(fig)
+
+
+def plot_xmax_bench_errs(xmaxs_all, errs_states, state_ns, bins, method_names, path):
+    fig, ax = plt.subplots()
+    for xmaxs, errs_state, n, bin, method_name in zip(xmaxs_all, errs_states, state_ns, bins, method_names):
+        for i in range(len(errs_state)):
+            ax.plot(xmaxs, errs_state[i], label=method_name[i]+f", state {n}, {bin} bins")
+
+    ax.set_xlabel("$z_\\text{max}$")
+    ax.set_ylabel("Energy error ($\\hbar\\omega$)")
+    ax.set_yscale("log")
+    #ax.set_xscale("log")
     ax.legend()
 
     fig.savefig(path)
