@@ -12,13 +12,19 @@
  * @param z Dimensionless distance from the origin.
  * @return V in units of hbar omega.
  */
-const double harmonic(const double z);
+double harmonic(double z);
 
 /**
  * Modified harmonic potential.
  * @param z Dimensionless distance from the origin.
  * @return V in units of hbar omega.
  */
-const double harmonic_bump(const double z);
+double harmonic_bump(double z);
+
+double harmonic_bump_2(double z);
+
+double lennard_jones(double z);
+
+double morse_potential(double z);
 
 #endif //EIG1_POTENTIALS_H

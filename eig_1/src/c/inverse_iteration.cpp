@@ -40,6 +40,7 @@ inverse_iteration(const Eigen::MatrixXd &A, const std::vector<double> &shifts, i
         }
         evals(i_shift) = x.transpose() * A * x;
         evecs.col(i_shift) = x;
+        std::cout << evals(i_shift) << std::endl;
     }
 
     return std::vector<Eigen::MatrixXd>({evals, evecs});

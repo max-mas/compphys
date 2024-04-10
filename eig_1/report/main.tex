@@ -41,12 +41,12 @@
 \fancyhead[L]{\leftmark}
 \fancyhead[R]{}
 
-\fancyfoot[C]{Computational Physics: Temperature of Earth}
+\fancyfoot[C]{Computational Physics: Eigenvalue Problems 1}
 \fancyfoot[R]{\thepage}
 
-\title{Computational Physics: Temperature of Earth Project Report}
+\title{Computational Physics: Eigenvalue Problems 1}
 \author{Stockholm University, Spring Term 2024 \\Max Maschke}
-\date{Apr 04 2024}
+\date{Apr 11 2024}
 
 
 \begin{document}
@@ -59,198 +59,315 @@
 
 \newpage
 \section{Introduction}
-In this report, a simple energy balance model of Earth's atmosphere is presented, implemented and analysed. It is part of the coursework for the computational physics class held at Stockholm University in 2024.
+The aim of this project is to implement a numerical solver for the 1D-Schrödinger equation and test it for the harmonic oscillator. It is part of the coursework for the computational physics class held at Stockholm University in 2024.
 
-\section{Energy Balance Models}
-Energy balance models (EBMs) arguably represent the simplest class of climate models. They model the temperature of the Earth system using simple energy flux considerations only~\cite{ebcms}. 
-
-The simplest realisation of such a system is what's sometimes referred to as the zero-dimensional energy balance model: the temperature is calculated using the Stefan-Boltzmann law
+\section{Method}
+\subsection{Discretising the 1D Schrödinger Equation}
+The time independent Schrödinger equation (SEQ) is famously an eigenvalue problem: 
+\begin{equation}\label{SEQ}
+    \mathcal{H}\ket{\psi} = E\ket{\psi}
+\end{equation}
+For a single particle and moving to real-space representation, using the wave function $\psi(x) = \braket{x|\psi}$, it assumes the form 
 \begin{equation}
-    \frac{P}{A} = \sigma T^4,\quad \sigma = \frac{2\pi^5 k_\text{B}^4}{15 h^3c^2}\approx 5.69 \frac{\text{W}}{\text{m}^2\text{K}^4},
+    \left(-\frac{\hbar^2}{2m}\partial_x^2 + V(x)\right)\psi(x) = E\psi(x)
 \end{equation}
-assuming a steady state in which the Earth emits precisely the incoming flux at all times. Such a model predicts a surface temperature of -21°~C, which is much too low.
+where $V(x)$ is the real-space representation of the potential operator $\mathcal{V}$, which is a diagonal operator in this basis. $\mathcal{H}$ itself is, however, not diagonal, which is why, considering the difficulty of obtaining analytical solutions to the SEQ, one might be interested in numerical approaches to the eigenproblem posed.
 
-The most important property of the Earth system that is neglected in the above model is the planet's atmosphere. Absorption in the atmosphere traps a portion of the incoming flux, which is known as the greenhouse effect.
-
-In this analysis an energy balance model for a zero-dimensional planet with a one-dimensional atmosphere that is extended in the $z$-direction is studied, thus neglecting any convective effects and the water cycle. The incoming light is restricted to a single wavelength in the visible part of the spectrum and any thermally emitted light is in turn restricted to a single IR wavelength. This implies that there is only one absorption cross-section $\sigma_i,~i=\text{IR, V}$, for both parts of the spectrum.
-
-To make the model numerically tractable, the atmosphere is divided into $n$ discrete layers of height $dh$. In any of these layers $j$, the energy balance is given by
+The first necessary step is to translate the infinite dimensional problem stated above into a finite basis. Naturally, this involves some sort of approximation. Intuitively, one possible approach is to go from the infinite dimensional eigenbasis of the position operator $\mathcal{X}$
+\begin{equation}\
+    \mathcal{X}\ket{x} = x\ket{x},\quad \braket{x'|x}=\delta(x'-x), \quad x \in \mathbb{R}
+\end{equation}
+to a discretised set of positions $x_i$ with an associated discrete position operator $X$
 \begin{equation}
-    E_j = A_j,
+    X \ket{x_i} = x_i \ket{x_i}, \quad \braket{x_j|x_i} = \delta_{ij}, \quad i \in \mathbb{N}.
 \end{equation}
-that is emission must equal absorption. All radiation incoming from neighbouring layers that is not transmitted is absorbed, so 
-\begin{equation}\label{emission}
-    E_j = A_j = \left(\frac{E_{j-1} + E_{j+1}}{2} + T_{j-1}^{\text{out}} + T_{j+1}^{\text{in, IR}}\right)\left(1 - \text{e}^{-\sigma_\text{IR}\rho_j dh}\right) + T_{j+1}^{\text{in, V}}\left(1 - \text{e}^{-\sigma_\text{V}\rho_j dh}\right).
-\end{equation}
-The equations for the different transmission measures are omitted here for brevity and can be found in the course material. The lowest layer is assumed to be a black body, which is a first order approximation for the Earth's surface:
+If we additionally impose a maximum and minimum value of $x_i$ (N.B.\ this implies assuming $\psi(x)=0$ outside for the purposes of finding solutions to the SEQ) and require neighbouring positions to have constant spacing $h$, the set of allowed positions assumes a finite number $n$:
 \begin{equation}
-    E_0 = A_0 = \frac{1}{2}E_1 + T_{j+1}^{\text{in, IR}} + T_{j+1}^{\text{in, V}}
+    x_i = x_\text{min} + i \cdot h, \quad i = 0, \dots, n -1
 \end{equation}
-
-It can be immediately seen that absorption depends on the density of the atmosphere at a given height $h_j = j\cdot dh$. From the ideal gas law
-\begin{equation}\label{density}
-    \frac{M}{V} = \rho = \frac{Pm}{k_\text{B}T}
-\end{equation} 
-where $m$ is the molecular mass of air, and the hydrostatic condition considering the height-variation of the gravitational acceleration $g$
+It will be convenient to set $x_\text{min} = -x_\text{max}$ henceforth. For a given $n$, that yields
 \begin{equation}
-    \frac{\text{d}P}{\text{d}h} = -\rho \cdot g(h),
+     h = 2x_\text{max}/(n-1).
 \end{equation}
-we find
-\begin{equation}\label{ODE}
-    \frac{\text{d}P}{\text{d}h} = -\frac{Pm}{k_\text{B}T} \cdot g(h).
-\end{equation}
-Assuming $T=\text{const.}$, this differential equation can be solved iteratively given a starting value for $P$. The density is then directly calculated from $P$ using equation~\eqref{density}.
-
-\section{Numerical Formulation}
-\subsection{Density calculation}
-Since the density in principle only has to be calculated once for all the other calculations, a more expensive but more accurate solver than a simple Euler method
+What we have achieved by moving to this finite basis is that, if we can map $\mathcal{H}$ to its finite representation $H\in\mathbb{C}^n$,~\eqref{SEQ} can be represented as a matrix equation, which allows us to unleash the whole toolbox of numerical linear algebra onto it. Moreover, any real function $\mathcal{F}$ on $[-x_\text{max}, x_\text{max}]$ can be represented by a vector $f\in\mathbb{R}^n$ by the identification
 \begin{equation}
-    P_{i+1} = P_i + \frac{\text{d}P}{\text{d}h}(h_{i})\cdot \text{d}h
+    f = \sum_i f(x_i) e_i.
 \end{equation}
-can be used for increased accuracy. We chose to apply a three-step Adams–Bashforth method:
+Naturally, this also applies to the wave function, meaning a physical state $\ket{\psi}$ can be approximately represented in our finite dimensional space. The correct choice for the inner product is the standard inner product, the correct norm is the euclidean norm.
+
+As previously mentioned, the potential operator $\mathcal{V}$ and respectively its finite representation $V$ are diagonal in the real-space basis, i.e.
 \begin{equation}
-    P_{i+1} = P_i + \left(\frac{23}{12}\frac{\text{d}P}{\text{d}h}(h_{i}) - \frac{16}{12}\frac{\text{d}P}{\text{d}h}(h_{i-1}) + \frac{5}{12}\frac{\text{d}P}{\text{d}h}(h_{i-2}) \right)\cdot\text{d}h
+    \braket{x_j|V|x_i} = \delta_{ij}V(x_i) \Rightarrow V = \begin{bmatrix}
+        V(x_0) & & & \\
+        & V(x_1) & & \\
+        & & \ddots & \\
+        & & & V(x_{n-1})
+    \end{bmatrix}.
 \end{equation}
-Note that the first two steps have to be taken using Euler steps or similar. This method has error of order $O(dh^3)$ instead of the Euler method's $O(dh)$~\cite{wiki_adams_bashforth}.
-
-\subsection{Iterative EBM solution}
-The set of equations describing the model, namely \eqref{emission} etc., are coupled and must thus be solved consistently. One approach to this is to initialise $T_{n}^{\text{in, V}} = 1$ and then propagate the quantities $T^{\text{in, V}}$, $T^{\text{in, IR}}$ and $E$ downwards. Subsequently, starting from $E_0$, $T^{\text{out}}$ can be propagated upwards. This procedure can be repeated as many times as required until a steady solution is found. 
-
-This scheme is advantageous since it is very quick, requiring only $2n \cdot n_\text{sweep}$ iterations where $n_\text{sweep}$ is the number of full sweeps done. However, some boundary conditions that we might want to impose on the model are not explicitly enforced. For example, the outgoing flux $E_n/2 + T^{\text{out}}_n$ should be equal to the incoming visible flux, but the iteration does not guarantee this so it must be checked.
-
-\subsection{Direct EBM solution}
-Another approach is to realise that the equations describing the model constitute a linear system $Ax = b$ with $4n + 4$ unknowns if we include an $n+1$-th layer representing space where the density has dropped to zero. If $A$ is non-singular, the system has a unique solution. To ensure $A$ has full rank, the following additional boundary conditions have to be imposed:
+The same is not true for the momentum operator $\mathcal{P}$ or, respectively, $P$. It is a differential operator in position space and thus has no \enquote{exact} representation in the finite basis. However, its action on a continuous state can be approximated in the discrete case using a finite-difference formula for the second derivative. Two examples for centred finite difference formulae are the three- and five-point formulae:
 \begin{align}
-    T_{n+1}^{\text{in, V}} &= 1 \nonumber \\
-    T_{n+1}^{\text{in, IR}} &= 0 \nonumber \\
-    T_{0}^{\text{out}} &= E_0 \\
-    T_{n+1}^{\text{out}} &= 1 \nonumber \\
-    E_{n+1} &= 0 \nonumber
+    f''(x_i) &= \frac{1}{h^2}\left(f(x_{i-1}) - 2f(x_i) + f(x_{i+1})\right) + O(h^2) \\
+    f''(x_i) &= \frac{1}{h^2}\left(-\frac{1}{12}f(x_{i-2}) + \frac{4}{3}f(x_{i-1}) - \frac{5}{2}f(x_i) + \frac{4}{3}f(x_{i+1}) -\frac{1}{12}f(x_{i+2}) \right) + O(h^4)
 \end{align}
-In English, these mean that, a), the incoming visible flux is normalised, b), no IR flux is incoming from the sun, c), the ground emits as a black body, d), the outgoing IR radiation must be equal in energy flux to the incoming visible flux and e), space does not absorb or emit.
+Note that the coefficients of the $f(x_j)$ in both of these formulae are symmetric around the centre point. This is important because we want to translate the Hermitian operator $(\mathcal{P}^2)^\dag = \mathcal{P}^2$ into an Hermitian (actually symmetric because real-valued) matrix $(P^2)^H = P^2$, which, using the five-point formula, has the form
+\begin{equation}
+    P^2 = -\frac{\hbar^2}{h^2}\begin{bmatrix}
+        - \frac{5}{2} & \frac{4}{3} & -\frac{1}{12}& & & \\
+        \frac{4}{3} & - \frac{5}{2} & \frac{4}{3} &-\frac{1}{12} & & \\
+        -\frac{1}{12} & \frac{4}{3} & - \frac{5}{2} & \frac{4}{3} &-\frac{1}{12} & \\
+        & -\frac{1}{12} & \frac{4}{3} & - \frac{5}{2} & \frac{4}{3} &-\frac{1}{12}  \\
+        & & \ddots & \ddots & \ddots & \ddots & \ddots \\
+        & & & -\frac{1}{12} & \frac{4}{3} & - \frac{5}{2} & \frac{4}{3} &-\frac{1}{12}
+    \end{bmatrix}.
+\end{equation}
 
-From here, the methods discussed last week can be applied to solve the linear system directly. The advantage is that the solution will obey the boundary conditions exactly. However, calculating the $LU$-decomposition for a system of size $4n+4 \times 4n+4$ becomes costly quite quickly as $n$ is increased. As will be seen later, this method is thus not very efficient. Another problem with the interpretability of the directly obtained solution was also encountered later, namely that $E_0$, from which the temperature is obtained, came out to be negative, which is unphysical.
+This way, for any given potential, we obtain a real, symmetric matrix
+\begin{equation}
+    H = \frac{1}{2m}P^2 + V.
+\end{equation}
+If we can find its eigenpairs numerically, we will obtain an approximate solution to the full SEQ. Note that while the full equation will usually have infinitely many solutions, we can only expect to find as many as we allow discrete positions, i.e. $n$. Furthermore, due to the sampling theorem, we should not expect to be able to represent quickly oscillating wave functions.
+
+\subsection{Symmetric Potentials and Parity}
+The parity operator $\mathcal{P}$ maps every position eigenstate $\ket{x}$ to $\ket{-x}$. Acting on a wave function, this is equivalent to 
+\begin{equation}
+    \mathcal{P}\psi(x) = \psi(-x).
+\end{equation}
+It is easy to see that $\mathcal{P}^2=\mathbbm{1}$. This implies that the possible eigenvalues are $\pm 1$.
+
+If the potential function $V(x)$ satisfies coordinate inversion symmetry, i.e. $V(-x)=V(x)$, $\mathcal{H}$ satisfies $[\mathcal{H},\mathcal{P}] = 0$, so there exists a common eigenbasis of both operators. If we formulate our original problem in a $\mathcal{P}$-eigenbasis, we can separate the full Hilbert space into two subspaces, which will be beneficial for the numerical implementation.
+
+This $\mathcal{P}$-eigenbasis can be represented in terms of position states:
+\begin{equation}
+\ket{x,\pm} = \frac{1}{\sqrt{2}}\left(\ket{x}\pm \ket{-x}\right), \quad x \in [0, \infty)
+\end{equation}
+Technically, there is a problem here with $\ket{0,\pm}$, which we defer to the maths department and avoid in practice by choosing only even $n$ for the discretisation, which means the state $\ket{0}$ is not in our approximate Hilbert space.
+
+Transforming between the usual position basis and this parity basis is done using the normal rules of linear algebra. $\mathcal{H}$-eigenstates are, on the level of wave functions, even or odd functions. Notably, an odd eigenstate must satisfy $\psi(0)=0$, while this is neither forbidden nor required for an even state.
+
+A notable example for a symmetric potential is the harmonic oscillator
+\begin{equation}
+    V(x) = \frac{m\omega^2}{2} x^2.
+\end{equation}
+For this problem, there exists a neat dimensionless representation, introducing $z=x\sqrt{m\omega /\hbar}$, we find 
+\begin{equation}
+    \frac{1}{\hbar\omega}\mathcal{H} = \frac{1}{2}\left( -\partial_z^2 + z^2\right).
+\end{equation}
+Using algebraic methods, it is easy to show that the harmonic oscillator has an evenly spaced spectrum:
+\begin{equation}
+    E_n = \hbar\omega\left(\frac{1}{2} + n\right)
+\end{equation}
+
+\subsection{Numerical Eigenproblem Solvers}
+Analytically, eigenvalues may be obtained by finding the roots of the characteristic polynomial of a matrix $A$:
+\begin{equation}
+    \det(A - \lambda I) = 0
+\end{equation}
+One then gets the corresponding eigenvectors by solving
+\begin{equation}
+    (A - \lambda I) x = 0.
+\end{equation}
+The problem with this approach for numerical use is that the determinant is highly non-linear in the matrix elements $a_{ij}$. Small errors can thus propagate and yield hugely wrong eigenvalues. Other methods are thus needed.
+
+One example for an efficient and stable eigensolver is the $QR$-algorithm, based on the $QR$ decomposition of a matrix $A$:
+\begin{equation}
+    A = QR,
+\end{equation}
+where $Q\in \text{U}(n)$ and $R$ upper triangular. The idea is to iteratively apply orthogonal or, respectively, unitary transformations to $A$ that turn the elements below the diagonal zero. Such transformations are, for example, Householder transformations or Givens rotations. When this has been achieved, the eigenvalues are the diagonal elements.
+
+Eigenvalue solvers usually have complexity $O(n^3)$\cite{numerik}. Most of them actually reduce the matrix to tridiagonal form first and successively perform the actual diagonalisation in a final step.
+
+If not all eigenvalues are needed, another possible approach that might save some resources is inverse iteration, which is described in sufficient detail on the problem sheet that we need not repeat here what has been said there.
 
 \section{Implementation and Numerics}
-The calculation of the density and the solving of the EBM are implemented in Python. The code is enclosed with this report and also available at~\cite{github}. To speed up the iteration which would otherwise be performed in the interpreter, the code is just-in-time compiled using \texttt{Numba}~\cite{numba}. The LSE is solved using \texttt{Numpy}'s \texttt{linalg.solve} function~\cite{harris2020array}, which internally calls on \texttt{LAPACK}~\cite{laug} to compute the $LU$-decomposition.
+Functions for creating the Hamiltonian and obtaining the eigenvalues using full ED and inverse iteration are implemented in C++, making use of the popular linear algebra library \texttt{Eigen}\footnote{Whose home page was conveniently unavailable for the duration of this project.}~\cite{eigenweb}.
 
-Values of the important physical constants and measurements such as the sea level pressure are taken from~\cite{Wolfram}, cf. the head of \texttt{physics.py}~\cite{github}. The cut-off for the atmosphere is chosen to be $h_\text{max}=100\,\text{km}$, which implies that if, e.g., 10000 layers are used, $dh=10\,\text{m}$. The Earth's albedo is fixed at 0.33 and a solar flux of $344 \text{W}/\text{m}^2$ is used. Due to limited time, the influence of the mean surface reflectivity could not be implemented nor studied. The absorption in the visible bands was fixed at $\alpha_\text{V}=5\cdot 10^{-5}/\text{m}$
+To compare different methods, the following ways of solving the problem are implemented in the code available at~\cite{github} and enclosed with this report:
+\begin{itemize}
+    \item Full diagonalisation using the three-point formula,
+    \item full diagonalisation using the three-point formula from tridiagonals,
+    \item full diagonalisation using the three-point formula from tridiagonals, also using parity conservation,
+    \item full diagonalisation using the three-point formula,
+    \item full diagonalisation using the three-point formula and parity blocks and
+    \item inverse iteration using the five point formula and parity blocks.
+\end{itemize}
+Results are saved to disk and plotted using Python. For the inverse iteration, a tolerance of
+\begin{equation}
+    ||x_i - x_{i+1}|| < 10^{-8}
+\end{equation}
+was used, where both vectors are normalised.
+
 \subsection{Performance}
+The runtime of each solver is plotted against the number of bins $n$ in figure~\ref{fig:performance}. It can clearly be seen that all are $O(n^3)$ and that using parity brings a significant advantage for larger matrices, theoretically it should reduce the runtime by a factor of
+\begin{equation}
+    \frac{n^3}{2(n/2)^3} = 2^2 = 4,
+\end{equation}
+so almost by an order of magnitude. There appears to be a small penalty for using the five-point formula, but this should be offset by the fact that one can use smaller $n$ with this formula, see below.
 \begin{figure}
     \centering
-    \includegraphics[width=0.5\textwidth]{../plots/performance.pdf}
-    \caption{Measured runtimes of solving the EBM using the iterative and the LSE based approaches. The iteration, which used 15 full sweeps, outperforms the LSE solver by orders of magnitude and thus allows the study of much finer layers. Both curves have different slopes in the logarithmic plot, indicating that the iteration is $O(n\cdot n_\text{sweep})=O(n)$ while the LSE solver is $O\left((4n+4)^3\right)$.}
+    \includegraphics[width=0.65\textwidth]{../plots/bench/bench.pdf}
+    \caption{Runtime of each solver plotted against the number of bins $n$. All are $O(n^3)$ and using parity brings a significant advantage for larger matrices. Inverse iteration performs best but was notably only used to find one eigenvector.}
     \label{fig:performance}
 \end{figure}
-The measured runtimes of solving the EBM using both approaches is shown in figure~\ref{fig:performance}. It can be seen that the iteration, which used 15 full sweeps, outperforms the LSE solver by orders of magnitude and thus allows the study of much finer layers. It can also be seen that the iteration is $O(n\cdot n_\text{sweep})=O(n)$ while the LSE solver is $O\left((4n+4)^3\right)$.
 
-\subsection{Numerics}
-More important than the performance of any numerical method are its stability and convergence. To investigate this for both methods, their behaviour as the main numerical parameter $n$ is tuned must be observed.
-\begin{figure}
-    \centering
-    \begin{subfigure}{0.49\textwidth}\
-        \centering
-        \includegraphics[width=\textwidth]{../plots/temp_comp/full_N_comp.pdf}
-        \caption{Comparison of the predicted surface temperature for varying $n$ for both methods, using $\alpha_{\text{IR}}=1.2\cdot 10^{-4}/\text{m}$. Both methods converge and agree up to the first decimal.}
-        \label{subfig:N_comp}        
-    \end{subfigure}
-    \begin{subfigure}{0.49\textwidth}\
-        \centering
-        \includegraphics[width=\textwidth]{../plots/temp_full_it/full_N.pdf}
-        \caption{Convergence towards the final value for the iterative method using $\alpha_{\text{IR}}=1.2\cdot 10^{-4}/\text{m}$. To achieve three decimals of numerical accuracy, $10^5$ layers are needed.}
-        \label{subfig:N_it}        
-    \end{subfigure}    
-    \caption{Numerics of increasing $n$ for both approaches. Both methods are seen to be stable for increasing $n$ in the parameter ranges studied.}
-    \label{fig:N}
-\end{figure}
+The inverse iteration wins in this comparison, but it is to be noted that it was only used to find one eigenvector here. Since the $LU$-decomposition has to be calculated for every shift, the advantage this method has is quickly diminished when many eigenvectors are to be found. Also, if one does not have good guesses to their distribution, it can be difficult to avoid calculating the factorisation multiple times without finding a new eigenvector. This could be remedied by using full diagonalisation results for smaller matrices or estimating the distribution of the eigenvalues using, e.g., Gerschgorin circles which are numerically cheap.
 
-Figure~\ref{fig:N} shows how both models respond to increasing $n$. Not only do both of them show numerical convergence, they also agree up to the first decimal for $n=3000$ layers. Much finer layers are numerically intractable for the LSE method, but with the iterative method, we can go up to $n=10^8$. The additional precision gained by this is sure to be offset by systematic sources of error in the choice of physical parameters and approximations of the model, so such a high number of discretisations is not needed in practice, which is why $n=105$ was used consistently later on.
-\begin{figure}
-    \centering
-    \includegraphics[width=0.65\textwidth]{../plots/temp_full_it/full_sweeps.pdf}
-    \caption{Numerics of increasing the number of sweeps for the iterative method, using $\alpha_{\text{IR}}=1.2\cdot 10^{-4}/\text{m}$ and $10^5$ layers. To achieve two decimals of convergence, 15 sweeps are needed.}
-    \label{fig:sweeps}
-\end{figure}
-
-For the iterative method, there is another numerical parameter, namely the number of sweeps $n_\text{sweeps}$. Figure~\ref{fig:sweeps} shows the numerical convergence of increasing this quantity. It can be clearly seen that at least a handful of sweeps are required for the temperature to settle. We estimate that the two decimals of convergence given by using 15 sweeps is enough precision for the rest of this analysis and thus used this amount henceforth.
-
-It is important to note that the iteration did not exactly achieve $T_{n+1}^{\text{in, V}} = T_{n+1}^{\text{out}} = 1$. The latter fluctuated in a typical range of 0.5 to 2. Unfortunately, there was not enough time left to investigate this further, but it is surprising given that the LSE and the iteration agree in their predictions for surface temperature and the LSE enforces this condition strictly.
-
-\section{Physical Predictions}
-In this section, the physical predictions of the model are to be discussed.
-
-\subsection{Density}
-Before the temperatures are looked at, the validity of the ODE solution giving the density is to be confirmed. It has to be reiterated here that the density curve depends on a guess of temperature that is assumed to be constant while the density is calculated. This has only a slight influence on the results, though, as long as this guess for $T$ is kept in a reasonable range. We used $T=15\text{° C}$ henceforth to ensure that the density at $h=0$ which is derived from the pressure at sea level is as close to the literature value for sea level density as possible, see figure~\ref{fig:density}.
-\begin{figure}
-    \centering
-    \includegraphics[width=0.65\textwidth]{../plots/density/density.pdf}
-    \caption{Density profile of the atmosphere obtained from numerically solving equation~\eqref{ODE} for different temperature guesses. The choice of temperature more strongly affects the densities at higher heights than at sea level.}
-    \label{fig:density}
-\end{figure}
-
-The approximately linear drop on the lin-log plot implies that the drop in density is roughly exponential, which is what our first order expectation would be considering the barometric formula known from introductory physics classes.
-
-\subsection{Sea level temperature predictions}
-The predicted sea level temperature of the model strongly depends on the absorption in the IR bands, parametrised by 
-\begin{equation}
-    \alpha_{\text{IR}} = \sigma_\text{IR} \cdot \rho_0
-\end{equation}
-where $\rho_0$ is the sea level density. Given more time, it would have been prudent to determine a reasonable range for this parameter from known concentrations of greenhouse gases in the atmosphere. Instead, we are forced to limit our analysis to varying $\alpha_{\text{IR}}$ with the goal of predicting the average temperature of Earth, $T_\text{E}\approx 15\text{° C}$.
-
-The predicted sea level temperature for a large range of values of $\alpha_{\text{IR}}$ is shown in figure~\ref{subfig:alpha_comp} for both the iterative and the LSE method, using $n=3000$ layers. We see that at low $\alpha_{\text{IR}}$, they are in excellent agreement, however, beyond a certain point, the LSE method breaks down. This is because the predicted surface emission becomes negative, which is unphysical. The reason for this could not be definitely determined but may have to do with the condition of the matrix as $\alpha_{\text{IR}}$ is increased. By design, the iterative method does not depend on the rank of the coefficient matrix $A$, so it does not show this problem. For the iterative method, the plot is repeated in figure~\ref{subfig:alpha_full} for a higher $n$ of $10^5$, showing minimal differences except for very large $\alpha_{\text{IR}}$.
-
-Physically, we see that our model shows the greenhouse effect as desired. In the absence of IR-absorbing gases, i.e.\ as $\alpha_{\text{IR}}\longrightarrow 0$, the predicted temperature is quite cold and close to that of the zero-dimensional EBM. Note that it is slightly lower than the 21° C quoted above since visible absorption is present in the model which reduces the flux that reaches the surface.
-
-Conversely, as $\alpha_{\text{IR}}$ is increased, the temperature rises and, at very high and possibly unphysical $\alpha_{\text{IR}}$, plateaus. Figure~\ref{subfig:alpha_log} shows that for an $\alpha_{\text{IR}}$ of ca.\ $1.2\cdot 10^{-4}/\text{m}$, the predicted temperature is approximately 15° C which is the roughly expected real value.
-
+\subsection{Discretisation Error}
+There are two independent parameters that influence the trustworthiness of the eigenpairs: $n$ and $z_\text{max}$. To study their influence on the validity of the results, we first calculated the ground state energy of the harmonic oscillator for all the methods for various $n$, cf.~figure~\ref{subfig:bench_err_n}. Since we know the analytic result for the energies, we can examine the numerical error directly. It can clearly be seen that the error depends almost exclusively on the approximation of the derivative and not on the method. At some point, we would expect this to stop because the inverse iteration stops when the change in norm becomes less than $10^{-8}$. While the error falls of strongly with increasing $n$ for both formulae, the five-point formula yields better accuracy for smaller $n$ and should thus be preferred.
 \begin{figure}
     \centering
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/temp_comp/full_alpha_comp.pdf}
-        \caption{Predicted sea level temperature for a large range of values of $\alpha_{\text{IR}}$, both methods, $n=3000$. For large $\alpha_{\text{IR}}$, the LSE method breaks down.}
-        \label{subfig:alpha_comp}
-    \end{subfigure}\begin{subfigure}{0.49\textwidth}
-        \centering
-        \includegraphics[width=\textwidth]{../plots/temp_full_it/full_alpha.pdf}
-        \caption{Predicted sea level temperature for a large range of values of $\alpha_{\text{IR}}$, iterative method, $n=10^5$. The iterative method is stable for all $\alpha_{\text{IR}}$.}
-        \label{subfig:alpha_full}
-    \end{subfigure}\\
+        \includegraphics[width=\textwidth]{../plots/bench/bench_err.pdf}
+        \caption{}
+        \label{subfig:bench_err_n}
+    \end{subfigure}
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/temp_full_it/full_alpha_log.pdf}
-        \caption{Predicted sea level temperature for a narrow range of values of $\alpha_{\text{IR}}$, iterative method, $n=10^5$. An $\alpha_{\text{IR}}$ of ca. $1.2\cdot 10^{-4}/\text{m}$ reproduces the expected value.}
-        \label{subfig:alpha_log}
+        \includegraphics[width=\textwidth]{../plots/bench/bench_xmax_err.pdf}
+        \caption{}
+        \label{subfig:bench_err_zmax}
     \end{subfigure}
-    \caption{Sea level temperature predictions of the EBM for varying $\alpha_{\text{IR}}$.}
-    \label{fig:alpha}
+    \caption{Error of the numerically calculated energies for the ground state and varying $n$~\ref{subfig:bench_err_n} and for the ground and an excited state and varying $z_\text{max}$~\ref{subfig:bench_err_zmax}. The error depends almost exclusively on the approximation of the derivative and not on the method used and falls of strongly with increasing $n$. The five-point formula yields better accuracy for smaller $n$. For $z_\text{max}$, the behaviour of the error depends on the state in question.}
+    \label{fig:bench_err}
+\end{figure}
+
+For $z_\text{max}$, the behaviour of the error depends strongly on the state in question. This is already true to an extent for varying $n$, but more so for $z_\text{max}$ because higher excited states are less localised around the minimum. For this reason, we show the error for the ground state and the 50th state for $n=1000, 2500$ in figure~\ref{subfig:bench_err_zmax}. As expected, a small box is sufficient to contain the maximally localised ground state while for an excited state, more space is needed. Informed by this, we chose to keep $z_\text{max}$ fixed at 20 henceforth to balance accuracy for the ground state and higher-lying states.
+
+It is to be noted that while one can seemingly get quite a good approximation to the ground state energy with a small number of bins $n\approx 100$, this will not give a very smooth representation of the wave function which is localised on about $25\%$ of the interval $[-z_\text{max}, z_\text{max}]$, so even if the energies are already quite good, if one is interested in the states it might be prudent to go to higher $n$ regardless.
+
+\subsection{Orthonormality}
+Since $H$ is Hermitian, its eigenvectors should be orthogonal and can be chosen to be normalised (which we should require of physical states). We investigate this for $n=4000$ in figure~\ref{fig:orthonormal}, showing only the first $100$ states not because the observations do not hold for the rest but for visual clarity. We can see that the vectors are perfectly orthonormal within reasonable numeric accuracy ($\braket{i|j} < 10^{-18} \forall i\neq j$) as we should expect.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/orthonormal/orthonormality.pdf}
+    \caption{Absolute value of the overlap of the first 100 eigenvectors for $n=4000$. The vectors are perfectly orthonormal as we should expect within reasonable numerical accuracy. }
+    \label{fig:orthonormal}
 \end{figure}
 
 \FloatBarrier
-\subsection{Atmospheric temperature}
-\begin{figure}[h]
+\section{Results}
+\subsection{Harmonic Oscillator}
+\subsubsection{Eigenvalues}
+We compare the numerical results of the eigenvalues obtained from full diagonalisation in figure~\ref{subfig:evals} and the deviation from the exact result in figure~\ref{subfig:evals_err}. It can be seen that around $i=200$, the energies begin diverging from the analytical result. In the errors, there appears a kink in the curve which might be exactly where this phenomenon begins. It is most likely due to the fact that such high lying states in the spectrum are highly spread out and begin not to \enquote{fit} into our box any more.
+\begin{figure}
     \centering
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/T_height/T_height_mat.pdf}
-        \caption{LSE}
-        \label{subfig:height_mat}
+        \includegraphics[width=\textwidth]{../plots/evals/evals.pdf}
+        \caption{}
+        \label{subfig:evals}
     \end{subfigure}
     \begin{subfigure}{0.49\textwidth}
         \centering
-        \includegraphics[width=\textwidth]{../plots/T_height/T_height_it.pdf}
-        \caption{Iteration}
-        \label{subfig:height_it}
+        \includegraphics[width=\textwidth]{../plots/evals/evals_err.pdf}
+        \caption{}
+        \label{subfig:evals_err}
     \end{subfigure}
-    \caption{Temperature profile of the atmosphere predicted using the EBM.}
-    \label{fig:height}
+    \caption{Numerical eigenvalues for the harmonic potential with $n=4000$ and $z_\text{max}=20$. Around the 200th state, energies start majorly diverging from the analytic result.}
+    \label{fig:evals}
 \end{figure}
-As a last step, we want to see how the temperature of the atmosphere varies with height. This is shown in figure~\ref{fig:height}. It appears that while the ground layer is at high temperature, the atmosphere it is supposed to be in thermal equilibrium with has much too low temperature even in the first layer above the ground. This could either be because the way the temperatures were calculated using the Stefan-Boltzmann law is wrong for the atmosphere, or there is a previously undiscovered mistake somewhere else in the model. The latter would be discouraging because it would mean that the model does not make physically meaningful predictions but is instead just fitted such that the surface temperature matches expectation.
 
-Due to a lack of time, we can sadly not investigate this further.
+We omit a plot of the eigenvalues obtained using inverse iteration here because there is nothing else to be learned.
 
+\subsubsection{States}
+The first eight states obtained using full diagonalisation are shown in figure~\ref{fig:states}. We can see that they alternate in parity, obey the node theorem and become increasingly spread out with increasing energy. There was no time left to compare them to the analytic solution in a plot, but a rough visual comparison looks just fine.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{../plots/states/states.pdf}
+    \caption{First eight wave functions for the harmonic oscillator. They alternate in parity, obey the node theorem and become increasingly spread out with increasing energy as expected.}
+    \label{fig:states}
+\end{figure}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/states/deviation.pdf}
+    \caption{Deviation between the first four full ED and inverse iteration states of the harmonic oscillator. The deviation is on the order of numerical error for all $z$.}
+    \label{fig:states_invit}
+\end{figure}
+
+To judge the accuracy of the inverse iteration, we present the deviation between the first four full ED and inverse iteration states in figure~\ref{fig:states_invit}. We choose not to show the wave functions themselves again because there is no discernable difference to the naked eye. The errors show that agreement is very high.
+
+High states found by our scheme are unphysical, see figure~\ref{fig:bad_states}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{../plots/states/states_high.pdf}
+    \caption{Highest lying eigenstates found. These states are highly unphysical.}
+    \label{fig:bad_states}
+\end{figure}
+
+Intermediate lying states near the point where the energies diverge from the correct result are still sufficiently physical to a coarse visual inspection, cf. figure~\ref{fig:ok_states}
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{../plots/states/states_low_middle.pdf}
+    \caption{Intermediate eigenstates close to the point where they become unphysical. These states are not obviously unphysical yet.}
+    \label{fig:ok_states}
+\end{figure}
+
+\subsubsection{Observables and algebra}
+The physical states found all obey
+\begin{equation}
+    \braket{x} = 0, \quad \braket{p} = 0.
+\end{equation}
+The former is required of solutions to the SEQ for symmetric potentials. The latter is a general feature of bound states in quantum mechanics but also intuitively follows in this case from the fact that the wave function is real valued and $\mathcal{P}=-i\hbar\partial_x$. A rigorous proof uses partial integration and the fact that $\psi\in L_2$.
+
+However, the expectation value $\braket{x^2}$ is non-zero and increases for higher lying states. According to Ehrenfest's theorem, for large $i$ this should approach the classical squared amplitude for a classical oscillator of the given energy, the two of which are proportional to each other. The numerically obtained expectation values are shown in figure~\ref{fig:pos2}. We observe the same behaviour as before, the values behave as expected until $i\approx 200$ when results become unphysical.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/pos2.pdf}
+    \caption{Numerically obtained expectation values of the squared position operator.}
+    \label{fig:pos2}
+\end{figure}
+
+The same can be seen with the expectation values of the number operator $n=a^\dag a$ shown in figure~\ref{fig:occupation}, where the ladder operators are given by
+\begin{equation}
+    a^\dag = \frac{1}{\sqrt{2}}\left(z - \partial_z\right)
+\end{equation}
+(recall that $\partial_z^\dag = -\partial_z$).
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/occupation.pdf}
+    \caption{Numerically obtained expectation values of the number operator.}
+    \label{fig:occupation}
+\end{figure}
+Actually, an $\mathcal{H}$-eigenstate should also be an $n$-eigenstate since $\mathcal{H} = \hbar\omega\left(n + \frac{1}{2}\right)$.
+
+As an aside, we were also able to transform the ground state into desired excited states using successive applications of the ladder operator, though this is somewhat outside the scope of this numerical analysis.
+
+\FloatBarrier
+\subsection{Modified Harmonic Oscillator}
+We now want to consider a modified potential
+\begin{equation}
+    V'(z) = \frac{1}{2}z^2 + \alpha \text{e}^{-\beta z^2}.
+\end{equation}
+Note that this is also symmetric, so we can use parity states. We chose to study a small perturbation $(\alpha,\beta) = (1, 10)$ and a larger perturbation $(\alpha,\beta) = (5, 10)$, cf. figure~\ref{fig:pot}.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/pot.pdf}
+    \caption{Unperturbed harmonic potential and perturbed potentials.}
+    \label{fig:pot}
+\end{figure}
+\subsubsection{Eigenvalues}
+Figure~\ref{fig:evals_bump} shows the deviation of the perturbed eigenvalues from the unperturbed oscillator for the first 100 states. We see that excited states are increasingly less affected by the perturbation, which makes sense because their probability densities are small near the perturbation and thus don't \enquote{feel} it as strongly. Additionally, the deviation is higher for even parity states, because they are more localised in the region of the perturbation.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.65\textwidth]{../plots/evals/evals_bump.pdf}
+    \caption{Deviation of the perturbed eigenvalues from the unperturbed oscillator for the first 100 states. Excited states are increasingly less affected by the perturbation, even states are more affected than odd ones.}
+    \label{fig:evals_bump}
+\end{figure}
+
+\subsubsection{States}
+The perturbed eigenstates of even parity show a clear deviation from the unperturbed states for small n, see figure~\ref{fig:states_comp}. However, for odd parity, even for the large perturbation the change in the wave function can barely be seen with the naked eye, which lines up with what we conjectured above.
+\begin{figure}
+    \centering
+    \includegraphics[width=0.8\textwidth]{../plots/states/states_comp.pdf}
+    \caption{Comparison of the four first unperturbed and perturbed states. Odd states seem to be much less affected by the perturbation.}
+    \label{fig:states_comp}
+\end{figure}
+
+\FloatBarrier
 \section{Conclusion}
-In this report, we presented our implementation of the EBM described and discuss its numerics and physical predictions. Unfortunately, in the last step, a large problem emerged that we could not solve in time, which makes any interpretation of the results discussed before dubious.
+In this project, we successively implemented full diagonalisation and inverse iteration in a high level language. We applied the routines to the harmonic oscillator and verified our results by checking various general statements for symmetric potential and bound states and also  by comparing the energies to the exact solution.
+
+Additionally, we investigated the effects of a slight perturbation in the potential on the states and energies.
 
 \newpage
 \FloatBarrier

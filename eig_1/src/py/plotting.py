@@ -23,18 +23,45 @@ method_names = ["3 point full", "3 point tridiag full", "3 point tridiag parity 
 
 
 def main():
+    #plot_potentials("../../plots/pot.pdf")
+
+    #evs = load_evals("../../results/evs/evs_full_4000.txt")
+    #plot_evals(evs, "../../plots/evals/evals.pdf")
+    #plot_eval_error(evs, "../../plots/evals/evals_err.pdf")
+    #evecs = load_evecs("../../results/evecs/evecs_full_4000.txt", 4000)
+    #evecs_invit = load_evecs("../../results/evecs/evecs_invit.txt", 8)
+    #plot_evecs(evecs[250:258],  "../../plots/states/states_low_middle.pdf", 20, energies=None)
+    #plot_evec_deviation(evecs, evecs_invit, "../../plots/states/deviation.pdf")
+
+    #plot_evec_orthonormality(evecs, "../../plots/orthonormal/orthonormality.pdf")
+
+    #evals_0 = load_evals("../../results/evs/evs_full_4000.txt")
+    #evals_1 = load_evals("../../results/evs/evs_small_bump.txt")
+    #evals_2 = load_evals("../../results/evs/evs_large_bump.txt")
+    evecs_0 = load_evecs("../../results/evecs/evecs_full_4000.txt", 4)
+    evecs_1 = load_evecs("../../results/evecs/evecs_small_bump.txt", 4)
+    evecs_2 = load_evecs("../../results/evecs/evecs_large_bump.txt", 4)
+    plot_evecs_comparison([evecs_0, evecs_1, evecs_2], "../../plots/states/states_comp.pdf",
+                          ["harmonic", "small perturbation", "large pertubation"], 6)
+    #plot_evals_bump([evals_1, evals_2], ["small perturbation", "large pertubation"],
+    #                "../../plots/evals/evals_bump.pdf", 100)
+
+    #pos2 = load_evals("../../results/squared_positions.txt")
+    #plot_pos2(pos2, "../../plots/pos2.pdf")
+    #nums = load_evals("../../results/occupation.txt")
+    #plot_num(nums, "../../plots/occupation.pdf")
+
     """
-    evs = load_evals("../../results/evs/evs_bump.txt")
-    plot_evals_bump(evs, "../../plots/evals/evals_bump.pdf", i_max=100)
-    evecs = load_evecs("../../results/evecs/evecs_bump.txt", 100)
-    #plot_evecs(evecs,  "../../plots/states/states_bump.pdf", 5, energies=evs)
-    plot_evec_orthonormality(evecs, "../../plots/orthonormal/orthonormality.pdf")
+    evs = load_evals("../../results/evs/evs_morse_1000.txt")
+    plot_evals(evs, "../../plots/evals/evals_morse.pdf")
+    evecs = load_evecs("../../results/evecs/evecs_morse_1000.txt", 10)
+    plot_evecs(evecs,  "../../plots/states/states_morse.pdf", 20, energies=evs)
     """
 
-    ns, times = load_bench_times("../../results/bench/bench_time_avgs_5.txt")
-    plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
-    ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
-    plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
+    #ns, times = load_bench_times("../../results/bench/bench_time_avgs_5.txt")
+    #plot_bench_times(ns, times, "../../plots/bench/bench.pdf")
+    #ns, errs = load_bench_times("../../results/bench/bench_gs_erg_err.txt")
+    #plot_bench_errs(ns, errs, "../../plots/bench/bench_err.pdf")
 
     """
     xs1, gs_errs = load_errs_xmax_bench("../../results/bench/bench_xmax_err_state0_n_1000.txt")
@@ -53,6 +80,57 @@ def main():
     """
 
     return 0
+
+
+def harmonic_bump(z, c1, c2):
+    return 0.5 * z**2 + c1 * np.exp(-c2*z**2)
+
+def plot_pos2(pos2s, path):
+    n = len(pos2s)
+    fig, ax = plt.subplots()
+    ax.plot(np.arange(n), pos2s, label=f"$n={n}$, " + "$z_\\text{max}=" + f"{x_max}$")
+    ax.legend()
+    ax.set_ylabel("$\\braket{z^2}_i$")
+    ax.set_xlabel("State label $i$")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+
+    fig.savefig(path)
+    plt.close(fig)
+
+def plot_num(nums, path):
+    n = len(nums)
+    fig, ax = plt.subplots()
+    ax.plot(np.arange(n), nums, label=f"$n={n}$, " + "$z_\\text{max}=" + f"{x_max}$")
+    ax.legend()
+    ax.set_ylabel("$\\braket{a^\\dag a}_i$")
+    ax.set_xlabel("State label $i$")
+    ax.set_xscale("log")
+    ax.set_yscale("log")
+    ax.set_ylim([1, np.max(nums)])
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_potentials(path):
+    n = 4000
+    xs = np.linspace(-x_max/4, x_max/4, n)
+    pot_0 = harmonic_bump(xs, 0, 0)
+    pot_1 = harmonic_bump(xs, 1, 10)
+    pot_2 = harmonic_bump(xs, 5, 10)
+    fig, ax = plt.subplots()
+    ax.plot(xs, pot_0, label="Harmonic")
+    ax.plot(xs, pot_1, label="Small perturbation")
+    ax.plot(xs, pot_2, label="Larger perturbation")
+    ax.legend()
+    ax.set_xlabel("$z$")
+    ax.set_ylabel("$V(z)$")
+    ax.set_ylim([0, np.max(pot_0)])
+
+    fig.savefig(path)
+    plt.close(fig)
+
 
 
 def load_evals(path):
@@ -82,13 +160,45 @@ def plot_evals(evals, path):
     plt.close(fig)
 
 
-def plot_evals_bump(evals, path, i_max=None):
+def plot_eval_error(evals, path):
     fig, ax = plt.subplots()
     n = len(evals)
+
+    ax.plot(np.arange(n) + 1, np.abs(evals - np.arange(n) - 0.5), label=f"Numerical error, $n={n}$, " + "$z_\\text{max}=" + f"{x_max}$")
+    ax.set_xlabel("Eigenvalue index $i$")
+    ax.set_ylabel("Error of $i$-th eigenvalue ($\\hbar \\omega$)")
+    ax.set_yscale("log")
+    ax.set_xscale("log")
+    ax.set_xlim(1, n + 1)
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+def plot_evals_general(evals, path):
+    fig, ax = plt.subplots()
+    n = len(evals)
+
+    ax.plot(np.arange(n) + 1, evals, label=f"Numerical eigenvalues, $n={n}$, " + "$z_\\text{max}=" + f"{x_max}$")
+    ax.set_xlabel("Eigenvalue index $i$")
+    ax.set_ylabel("$i$-th Energy ($\\hbar \\omega$)")
+    #ax.set_yscale("log")
+    ax.set_xscale("log")
+    ax.set_xlim(1, n + 1)
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_evals_bump(evals_arr, potential_names, path, i_max=None):
+    fig, ax = plt.subplots()
+    n = len(evals_arr[0])
     if i_max is None:
         i_max = n
 
-    ax.plot(np.arange(i_max) + 1, np.abs(evals[:i_max] - (np.arange(i_max) + 0.5)), label=f"$n={n}$, " + "$z_\\text{max}=" + f"{x_max}$")
+    for i, evals in enumerate(evals_arr):
+        ax.plot(np.arange(i_max) + 1, np.abs(evals[:i_max] - (np.arange(i_max) + 0.5)), label=potential_names[i])
     ax.set_xlabel("Eigenvalue index $i$")
     ax.set_ylabel("$|E_i - \\hbar\\omega (i + 1/2)|$")
     #ax.set_yscale("log")
@@ -144,23 +254,75 @@ def plot_evecs(evecs, path, x_max_plot, energies=None):
     min_index = int( (x_max - x_max_plot) / h )
     max_index = int( (x_max + x_max_plot) / h )
 
-    y_max = np.max(evecs[0] ** 2)
+    y_max = np.max(np.abs(evecs[0]))
     for i, evec in enumerate(evecs):
-        rho = evec ** 2
+        if evec[int(n/2)] < 0 :
+            evec *= -1
+        rho = evec# ** 2
         label = f"State {i + 1}"
         if energies is not None:
             label += f", $E={np.round(energies[i], 5)}\\,\\hbar\\omega$"
         axes[i].plot(xs[min_index:max_index], rho[min_index:max_index], label=label, color="forestgreen")
         axes[i].set_xlabel("$z$")
-        axes[i].set_ylabel(f"$|\\psi|^2$")
+        axes[i].set_ylabel(f"$\\psi$")
         axes[i].legend()
-        axes[i].set_ylim(0, y_max + 0.001)  #
+        axes[i].set_ylim(-y_max - 0.001, y_max + 0.001)  #
         axes[i].set_xlim(-x_max_plot, x_max_plot)
     fig.tight_layout()
 
     fig.savefig(path)
     plt.close(fig)
 
+
+def plot_evecs_comparison(evecs_arr, path, potential_names, x_max_plot):
+    n = len(evecs_arr[0][0])
+    n_evecs = len(evecs_arr[0])
+    xs = np.linspace(-x_max, x_max, n)
+    fig, axes = plt.subplots(nrows=int(n_evecs / 2), ncols=2, figsize=(9, 2*n_evecs))
+    axes = axes.flatten()
+    # xmin_plot = -xmax_plot = - x_max + i * h
+    # i = (-xmax_plot + x_max)/h
+    h = 2*x_max / n
+    min_index = int( (x_max - x_max_plot) / h )
+    max_index = int( (x_max + x_max_plot) / h )
+
+    y_max = np.max(np.abs(evecs_arr[0][0]))
+    for i in range(n_evecs):
+        for j in range(len(evecs_arr)):
+            evec = evecs_arr[j][i]
+            if evec[int(n/2)] < 0:
+                evec *= -1
+            rho = evec# ** 2
+            label = f"State {i + 1}, " + potential_names[j]
+            axes[i].plot(xs[min_index:max_index], rho[min_index:max_index], label=label)
+        axes[i].set_xlabel("$z$")
+        axes[i].set_ylabel(f"$\\psi$")
+        axes[i].legend()
+        axes[i].set_ylim(-y_max - 0.001, y_max + 0.001)  #
+        axes[i].set_xlim(-x_max_plot, x_max_plot)
+    fig.tight_layout()
+
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_evec_deviation(evecs1, evecs2, path):
+    n = len(evecs1[0])
+    xs = np.linspace(-x_max, x_max, n)
+    fig, ax = plt.subplots()
+    for i, (evec1, evec2) in enumerate(zip(evecs1, evecs2)):
+        if evec1[int(n/2)] < 0:
+            evec1 *= -1
+        if evec2[int(n/2)] < 0:
+            evec2 *= -1
+        ax.plot(xs, np.abs(evec1 - evec2), label=f"State ${i}$")
+    ax.set_ylabel("Deviation $|\\psi_{i,\\text{ED}} - \\psi_{i,\\text{it.}}|$")
+    ax.set_xlabel("z")
+    ax.set_yscale("log")
+    ax.legend()
+
+    fig.savefig(path)
+    plt.close(fig)
 
 def load_bench_times(path):
     file = open(path)

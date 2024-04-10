@@ -16,23 +16,26 @@
 #include "out.h"
 #include "benchmark.h"
 #include "inverse_iteration.h"
+#include "observables.h"
 
 int main() {
-    bool get_best_full_diag = true;
+    bool get_best_full_diag = false;
     bool get_best_inv_it = false;
     bool bench_time = false;
     bool bench_xmax = false;
+    bool playground = true;
+    bool lennard_jones_test = false;
 
     if (get_best_full_diag) {
-        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic);
-        evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_full_4000.txt");
-        evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_full_4000.txt");
+        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(20, 4000, harmonic_bump_2);
+        evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_large_bump.txt");
+        evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_large_bump.txt");
     }
 
     if (get_best_inv_it) {
-        std::vector<Eigen::MatrixXd> H_even_odd = discrete_hamiltonian_five_point_parity(10, 1000, harmonic);
-        std::vector<double> shifts({0});
-        std::vector<Eigen::MatrixXd> eval_evec = inverse_iteration_parity(H_even_odd, shifts);
+        Eigen::MatrixXd H = discrete_hamiltonian_five_point(20, 4000, harmonic);
+        std::vector<double> shifts({0, 1.3, 2.3, 3.3, 4.3, 5.3, 6.3, 7.3});
+        std::vector<Eigen::MatrixXd> eval_evec = inverse_iteration(H, shifts);
         evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_invit.txt");
         evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_invit.txt");
     }
@@ -77,6 +80,52 @@ int main() {
         benchmark_excited_state_accuracy_x_max(x_maxs, bins, state, funcs, func_names, "/home/max/code/compphys/eig_1/results/bench/");
     }
 
+    if (playground) {
+        int num_bins = 4000;
+        double x_max = 20;
+        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_parity_full(x_max, num_bins, harmonic);
+        Eigen::MatrixXd evec = eval_evec[1];
+        //Eigen::MatrixXcd p = momentum_op(num_bins, x_max);
+        Eigen::MatrixXd x = position_op(num_bins, x_max);
+        Eigen::MatrixXd number = number_op(num_bins, x_max);
+        //Eigen::MatrixXd a_dag = a_dag_op(num_bins, x_max);
+
+        //Eigen::VectorXd gs = evec.col(0);
+        //Eigen::VectorXd state_1 = (a_dag * gs).normalized();
+        //double test = (evec.col(1) - state_1).norm();
+        //std::cout << test << std::endl;
+
+
+        //Eigen::VectorXcd momenta = Eigen::VectorXcd::Zero(num_bins);
+        //Eigen::VectorXcd squared_momenta = Eigen::VectorXcd::Zero(num_bins);
+        //Eigen::VectorXcd positions = Eigen::VectorXcd::Zero(num_bins);
+        Eigen::VectorXd squared_positions = Eigen::VectorXd::Zero(num_bins);
+        Eigen::VectorXd numbers = Eigen::VectorXd::Zero(num_bins);
+        for (int i = 0; i < num_bins; i++) {
+            //momenta(i) = evec.col(i).transpose() * p * evec.col(i);
+            //positions(i) = evec.col(i).transpose() * x * evec.col(i);
+            squared_positions(i) = evec.col(i).transpose() * x*x * evec.col(i);
+            //squared_momenta(i) = evec.col(i).transpose() * p*p * evec.col(i);
+            numbers(i) = evec.col(i).transpose() * number * evec.col(i);
+        }
+        //std::cout << momenta << std::endl;
+        //std::cout << positions << std::endl;
+        //std::cout << squared_positions << std::endl;
+        //std::cout << squared_momenta << std::endl;
+        //std::cout << numbers << std::endl;
+        evals_to_file(squared_positions,
+                      "/home/max/code/compphys/eig_1/results/squared_positions.txt");
+        evals_to_file(numbers,
+                      "/home/max/code/compphys/eig_1/results/occupation.txt");
+
+
+    }
+
+    if (lennard_jones_test) {
+        std::vector<Eigen::MatrixXd> eval_evec = solve_five_point_full(20, 1000, morse_potential);
+        evals_to_file(eval_evec[0], "/home/max/code/compphys/eig_1/results/evs/evs_morse_1000.txt");
+        evecs_to_file(eval_evec[1], "/home/max/code/compphys/eig_1/results/evecs/evecs_morse_1000.txt");
+    }
 
     return 0;
 }
