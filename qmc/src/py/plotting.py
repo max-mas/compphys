@@ -186,7 +186,7 @@ def plot_wf(x2, y2, alpha, lambd, path):
     cf = ax.contourf(xs, ys, wfs, 100, cmap="BuPu")
     for c in cf.collections:  # deprecated but idc
         c.set_edgecolor("face")
-    ax.scatter([x2], [y2], marker="2", s=250, color="red", alpha=0.5, label="Position of particle 2, " +  f"$\\lambda={lambd}\\,\\hbar\\omega$, $\\alpha={alpha}$")
+    ax.scatter([x2], [y2], marker=(5, 1, 0), s=200, color="limegreen", alpha=0.5, label="Position of particle 2, " +  f"$\\lambda={lambd}\\,\\hbar\\omega$, $\\alpha={alpha}$")
     ax.set_xlabel("$\\overline{x}_1$")
     ax.set_ylabel("$\\overline{y}_1$")
     ax.legend()
