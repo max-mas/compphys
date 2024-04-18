@@ -8,6 +8,8 @@
 #include <cmath>
 #include <vector>
 
+inline double GLOBAL_LAMBDA = 1.0; // this may be modified elsewhere!
+
 double harmonic_trial(std::vector<double> alpha_x);
 
 double harmonic_local_erg(std::vector<double> alpha_x);

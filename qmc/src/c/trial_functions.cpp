@@ -18,7 +18,7 @@ double harmonic_local_erg(std::vector<double> alpha_x) {
 }
 
 double harmonic_trial_2d_2p(std::vector<double> alpha_x) {
-    double lambda = 1.0;
+    double lambda = GLOBAL_LAMBDA;
     double alpha = alpha_x[0];
     double x1 = alpha_x[1];
     double y1 = alpha_x[2];
@@ -32,7 +32,7 @@ double harmonic_trial_2d_2p(std::vector<double> alpha_x) {
 }
 
 double harmonic_local_erg_2d_2p(std::vector<double> alpha_x) { //TODO optimise function calls
-    double lambda = 1.0;
+    double lambda = GLOBAL_LAMBDA;
     double alpha = alpha_x[0];
     double x1 = alpha_x[1];
     double y1 = alpha_x[2];
