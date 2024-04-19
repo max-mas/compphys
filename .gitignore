@@ -2,15 +2,18 @@
 env
 .vscode
 .idea
-./eig_1/src/cmake-build-debug
-./eig_1/src/cmake-build-release
-./qmc/src/cmake-build-debug
-./qmc/src/cmake-build-release
-./qmc/results
+./eig_1/src/cmake-build-debug/
+./eig_1/src/cmake-build-release/
+./qmc/src/cmake-build-debug/
+./qmc/src/cmake-build-release/
+./poisson_colloc/src/cmake-build-debug/
+./poisson_colloc/src/cmake-build-release/
+./qmc/results/
 cmake-build-debug
 cmake-build-release
 # big eigenvector files don't have to be pushed
-./eig_1/results/evecs
+./eig_1/results/evecs/
+./poisson_colloc/results/
 
 # latex stuff
 *.aux
