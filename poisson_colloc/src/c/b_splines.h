@@ -13,6 +13,7 @@
 #include <string>
 #include <fstream>
 #include <filesystem>
+#include <functional>
 
 /**
  * Class that implements b-splines of order k, accessed by calling B_i(i, x).
@@ -49,6 +50,22 @@ public:
     numeric_type B_i(int i, numeric_type x);
 
     /**
+     * Returns the derivative of the ith spline at x.
+     * @param i Number of the spline, valid from 0 to num_knots - order_k.
+     * @param x
+     * @return B_i(x)
+     */
+    numeric_type B_i_x(int i, numeric_type x);
+
+    /**
+     * Returns the second derivative of the ith spline at x.
+     * @param i Number of the spline, valid from 0 to num_knots - order_k.
+     * @param x
+     * @return B_i(x)
+     */
+    numeric_type B_i_xx(int i, numeric_type x);
+
+    /**
      * Convenience function that creates the directory at path and saves the ith spline on the interval
      * [-xmin, xmax] with n_samples evaluation points.
      * @param i Number of the spline, valid from 0 to num_knots - order_k.
@@ -57,7 +74,7 @@ public:
      * @param xmax
      * @param path Path to a directory to save to (not a file!)
      */
-    void save_B_i(int i, int n_samples, numeric_type xmin, numeric_type xmax, const std::string & path);
+    void save_B_i(int i, int n_samples, numeric_type xmin, numeric_type xmax, const std::string & path, int deriv = 0);
 
 private:
     /**
@@ -69,6 +86,7 @@ private:
      */
     numeric_type B_i_k(int i, int k, numeric_type x);
 };
+
 
 template<typename numeric_type>
 b_splines<numeric_type>::b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> &knotPoints,
@@ -102,6 +120,27 @@ numeric_type b_splines<numeric_type>::B_i(int i, numeric_type x) {
     return B_i_k(i, order_k, x);
 }
 
+template<typename numeric_type>
+numeric_type b_splines<numeric_type>::B_i_x(int i, numeric_type x) {
+    numeric_type k1 = (knot_points(i + order_k - 1) - knot_points(i));
+    numeric_type k2 = (knot_points(i + order_k) - knot_points(i+1));
+    return (order_k - 1) * ((k1 != 0) ? (B_i_k(i  , order_k - 1, x) / k1) : numeric_type(0.0))
+          -(order_k - 1) * ((k2 != 0) ? (B_i_k(i+1, order_k - 1, x) / k2) : numeric_type(0.0));
+}
+
+template<typename numeric_type>
+numeric_type b_splines<numeric_type>::B_i_xx(int i, numeric_type x) {
+    const int & k = order_k;
+    numeric_type k1 = ((knot_points(i + k - 1) - knot_points(i)) * (knot_points(i + k - 2) - knot_points(i)));
+    numeric_type k2 = ((knot_points(i + k - 1) - knot_points(i)) * (knot_points(i + k - 1) - knot_points(i+1)));
+    numeric_type k3 = ((knot_points(i + k) - knot_points(i+1)) * (knot_points(i + k - 1) - knot_points(i+1)));
+    numeric_type k4 = ((knot_points(i + k) - knot_points(i+1)) * (knot_points(i + k) - knot_points(i+2)));
+    return ((k1 != 0) ? ((k - 1) * (k - 2) * B_i_k(i, k-2, x) / k1) : numeric_type(0.0))
+          -((k2 != 0) ? ((k - 1) * (k - 2) * B_i_k(i+1, k-2, x) / k2) : numeric_type(0.0))
+          -((k3 != 0) ? ((k - 1) * (k - 2) * B_i_k(i+1, k-2, x) / k3) : numeric_type(0.0))
+          +((k4 != 0) ? ((k - 1) * (k - 2) * B_i_k(i+2, k-2, x) / k4) : numeric_type(0.0));
+}
+
 template <typename numeric_type>
 numeric_type b_splines<numeric_type>::B_i_k(int i, int k, numeric_type x) {
     if (k == 1 and i == num_knots-1) {
@@ -112,18 +151,18 @@ numeric_type b_splines<numeric_type>::B_i_k(int i, int k, numeric_type x) {
         // check if x in interval [t_i, t_i+1)
         return (knot_points(i) <= x and x < knot_points(i+1)) ? numeric_type(1.0) : numeric_type(0.0);
     } else {
-        // yes, this is ugly :)
-        return (((knot_points(i + k - 1) - knot_points(i)) != 0) and (i + k - 1 < num_knots) ?
-             (x - knot_points(i)) / (knot_points(i + k - 1) - knot_points(i)) * B_i_k(i, k-1, x) : numeric_type(0.0))
-            + (((knot_points(i + k) - knot_points(i + 1)) != 0) and (i + k < num_knots) ?
-            (knot_points(i + k) - x) / (knot_points(i + k) - knot_points(i + 1)) * B_i_k(i+1, k-1, x) : numeric_type(0.0));
+        numeric_type k1 = (knot_points(i + k - 1) - knot_points(i));
+        numeric_type k2 = (knot_points(i + k) - knot_points(i + 1));
+        return ((k1 != 0) and (i + k - 1 < num_knots) ? (x - knot_points(i)) / k1 * B_i_k(i, k-1, x) : numeric_type(0.0))
+             + ((k2 != 0) and (i + k < num_knots) ? (knot_points(i + k) - x) / k2 * B_i_k(i+1, k-1, x) : numeric_type(0.0));
     }
 }
 
 // path must be a dir not a file
 template<typename numeric_type>
 void b_splines<numeric_type>::save_B_i(int i, int n_samples, numeric_type xmin, numeric_type xmax,
-                                         const std::string &path) {
+                                       const std::string &path,
+                                       int deriv) {
     // linspaced xs
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> xs =
             Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(n_samples, xmin, xmax);
@@ -131,7 +170,9 @@ void b_splines<numeric_type>::save_B_i(int i, int n_samples, numeric_type xmin, 
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Bs(n_samples);
 
     for (int j = 0; j < n_samples; j++) {
-        Bs(j) = B_i(i, xs(j));
+        if (deriv == 1) { Bs(j) = B_i_x(i, xs(j)); }
+        else if (deriv == 2) { Bs(j) = B_i_xx(i, xs(j)); }
+        else { Bs(j) = B_i(i, xs(j)); }
     }
     // mkdir
     std::filesystem::create_directory(path);
