@@ -14,6 +14,7 @@
 #include <fstream>
 #include <filesystem>
 #include <functional>
+#include <stdexcept>
 
 /**
  * Class that implements b-splines of order k, accessed by calling B_i(i, x).
@@ -38,8 +39,7 @@ public:
      * @param knotPoints (not necessarily strictly) increasing vector of knot points
      * @param appendGhosts true by default
      */
-    b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & knotPoints,
-              bool appendGhosts = true);
+    b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & knotPoints);
 
     /**
      * Public function that returns the ith spline at x.
@@ -73,6 +73,7 @@ public:
      * @param xmin
      * @param xmax
      * @param path Path to a directory to save to (not a file!)
+     * @param deriv Default 0: bare spline, 1: 1st derivative, 2: 2nd derivative, else: bare
      */
     void save_B_i(int i, int n_samples, numeric_type xmin, numeric_type xmax, const std::string & path, int deriv = 0);
 
@@ -89,28 +90,29 @@ private:
 
 
 template<typename numeric_type>
-b_splines<numeric_type>::b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> &knotPoints,
-                                   bool appendGhosts): order_k(orderK) {
+b_splines<numeric_type>::b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> &knotPoints):
+order_k(orderK) {
+    if (orderK < 1) {
+        throw std::runtime_error("B splines cannot have order < 1.");
+    }
     // normal behaviour: append ghost points automatically
-    if (appendGhosts) {
-        num_ghosts = 2 * (orderK - 1);
-        numeric_type t_0 = knotPoints(0);
-        numeric_type t_f = knotPoints(Eigen::indexing::last);
-        num_knots = knotPoints.size() + num_ghosts;
 
-        knot_points = Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>(num_knots);
-        // initialise knot points with appended ghosts
-        for (int i = 0; i < num_knots; i++) {
-            if (i <= order_k - 1) {knot_points(i) = t_0;}
-            else if (i >= num_knots - (order_k - 1)) {knot_points(i) = t_f;}
-            else {knot_points(i) = knotPoints(i - (order_k - 1));}
+    num_ghosts = 2 * (orderK - 1);
+    numeric_type t_0 = knotPoints(0);
+    numeric_type t_f = knotPoints(Eigen::indexing::last);
+    num_knots = knotPoints.size() + num_ghosts;
+
+    knot_points = Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>(num_knots);
+    // initialise knot points with appended ghosts
+    for (int i = 0; i < num_knots; i++) {
+        if (i <= order_k - 1) { knot_points(i) = t_0; }
+        else if (i >= num_knots - (order_k - 1)) { knot_points(i) = t_f; }
+        else {
+            knot_points(i) = knotPoints(i - (order_k - 1));
+            if (knot_points(i) < knot_points(i - 1)) {
+                throw std::runtime_error("Knot points must be ascending!");
+            }
         }
-
-    // creation with ghost points already included
-    } else {
-        num_knots = knotPoints.size();
-        num_ghosts = 2 * (orderK - 1);
-        knot_points = Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>(knotPoints);
     }
 }
 
@@ -122,6 +124,9 @@ numeric_type b_splines<numeric_type>::B_i(int i, numeric_type x) {
 
 template<typename numeric_type>
 numeric_type b_splines<numeric_type>::B_i_x(int i, numeric_type x) {
+    if (order_k < 3) {
+        throw std::runtime_error("B splines are only differentiable for k >= 3.");
+    }
     numeric_type k1 = (knot_points(i + order_k - 1) - knot_points(i));
     numeric_type k2 = (knot_points(i + order_k) - knot_points(i+1));
     return (order_k - 1) * ((k1 != 0) ? (B_i_k(i  , order_k - 1, x) / k1) : numeric_type(0.0))
@@ -130,6 +135,9 @@ numeric_type b_splines<numeric_type>::B_i_x(int i, numeric_type x) {
 
 template<typename numeric_type>
 numeric_type b_splines<numeric_type>::B_i_xx(int i, numeric_type x) {
+    if (order_k < 3) {
+        throw std::runtime_error("B splines are only differentiable twice for k >= 4.");
+    }
     const int & k = order_k;
     numeric_type k1 = ((knot_points(i + k - 1) - knot_points(i)) * (knot_points(i + k - 2) - knot_points(i)));
     numeric_type k2 = ((knot_points(i + k - 1) - knot_points(i)) * (knot_points(i + k - 1) - knot_points(i+1)));
@@ -143,6 +151,9 @@ numeric_type b_splines<numeric_type>::B_i_xx(int i, numeric_type x) {
 
 template <typename numeric_type>
 numeric_type b_splines<numeric_type>::B_i_k(int i, int k, numeric_type x) {
+    if (k < 1) {
+        throw std::runtime_error("B splines cannot have order < 1."); // this should never happen
+    }
     if (k == 1 and i == num_knots-1) {
         // last spline is special, use cox de boor convention
         return (knot_points(i) <= x and x <= knot_points(i+1)) ? numeric_type(1.0) : numeric_type(0.0);
