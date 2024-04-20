@@ -36,6 +36,12 @@ public:
     collocation(const std::function<numeric_type (numeric_type)> & P,
                 const std::function<numeric_type (numeric_type)> & Q,
                 const std::function<numeric_type (numeric_type)> & G,
+                const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & physical_knots,
+                const std::pair<numeric_type, numeric_type> & Boundary_Conditions);
+
+    collocation(const std::function<numeric_type (numeric_type)> & P,
+                const std::function<numeric_type (numeric_type)> & Q,
+                const std::function<numeric_type (numeric_type)> & G,
                 const std::pair<numeric_type, numeric_type> & Interval,
                 const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
                 int Num_Physical_Points);
@@ -63,14 +69,12 @@ template<typename numeric_type>
 collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_type)> &P,
                                        const std::function<numeric_type(numeric_type)> &Q,
                                        const std::function<numeric_type(numeric_type)> &G,
-                                       const std::pair<numeric_type, numeric_type> &Interval,
-                                       const std::pair<numeric_type, numeric_type> &Boundary_Conditions,
-                                       int Num_Physical_Points):
-p(P), q(Q), g(G), interval(Interval),
-boundary_conditions(Boundary_Conditions), num_physical_points(Num_Physical_Points) {
-    // linspaced knots TODO not always a good choice, add option for self-specified points
-    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> physical_knots =
-        Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(num_physical_points, interval.first, interval.second);
+                                       const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> &physical_knots,
+                                       const std::pair<numeric_type, numeric_type> &Boundary_Conditions):
+p(P), q(Q), g(G), boundary_conditions(Boundary_Conditions) {
+
+    interval = std::pair<numeric_type, numeric_type>( {physical_knots(0), physical_knots(Eigen::indexing::last)} );
+    num_physical_points = physical_knots.size();
 
     // splines class
     int spline_order = 4; // always the same choice for 2nd order deqn
@@ -106,6 +110,21 @@ boundary_conditions(Boundary_Conditions), num_physical_points(Num_Physical_Point
 
         rhs_vector(i) = g(x);
     }
+
+}
+
+template<typename numeric_type>
+collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_type)> &P,
+                                       const std::function<numeric_type(numeric_type)> &Q,
+                                       const std::function<numeric_type(numeric_type)> &G,
+                                       const std::pair<numeric_type, numeric_type> &Interval,
+                                       const std::pair<numeric_type, numeric_type> &Boundary_Conditions,
+                                       int Num_Physical_Points) {
+    // linspaced knots TODO not always a good choice, add option for self-specified points
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Physical_Knots =
+        Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(Num_Physical_Points, Interval.first, Interval.second);
+
+    *this = collocation<numeric_type>(P, Q, G, Physical_Knots, Boundary_Conditions);
 }
 
 template<typename numeric_type>
