@@ -10,6 +10,8 @@ find_package(OpenMP REQUIRED)
 add_executable(poisson
         "./c/main.cpp"
         c/b_splines.h
+        c/collocation.h
+        c/poisson_funcs.h
 )
 
 target_link_libraries(poisson PUBLIC Eigen3::Eigen OpenMP::OpenMP_CXX)

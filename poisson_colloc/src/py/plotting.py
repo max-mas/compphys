@@ -20,10 +20,13 @@ plt.rcParams.update({
 
 def main():
 
+    """
     plot_B_i(13, "../../results/B_i_k/", "../../plots/B_i_k/", nodes=np.arange(11))
     plot_B_i(13, "../../results/B_i_k_x/", "../../plots/B_i_k_x/", nodes=np.arange(11), deriv=1)
     plot_B_i(13, "../../results/B_i_k_xx/", "../../plots/B_i_k_xx/", nodes=np.arange(11), deriv=2)
-
+    """
+    xs, phis = load_B_i_k("../../results/solution/solution_solidsphere.txt")
+    plot_potential(xs, phis, "../../plots/potential/potential_solidsphere.pdf", type="solid")
     return 0
 
 
@@ -89,6 +92,36 @@ def plot_B_i(i_max, in_path, out_path, nodes, deriv=0):
             fname = "B_i.pdf"
 
     fig.savefig(out_path + fname)
+    plt.close(fig)
+
+
+def plot_potential(xs, phis, path, type=None):
+    Vs = np.zeros(len(xs))
+    Vs[1:] = phis[1:] / xs[1:]
+    Vs[0] = Vs[1]
+
+    fig, ax = plt.subplots()
+    ax.plot(xs, Vs, label="$V$, collocation", color="forestgreen")
+    ax.set_xlabel("$r$ $(R)$")
+    ax.set_ylabel("$V(r)$ $(Q/(4\\pi\\varepsilon_0 R))$")
+
+    if type=="solid":
+        exact = np.zeros(len(xs))
+        for i in range(len(xs)):
+            if xs[i] <= 1:
+                exact[i] = (3/2 - xs[i]**2 / (2 * 1**2)) * 4/3 * np.pi * 1**3 * 1
+            else:
+                exact[i] = (1 / xs[i]) * 4/3 * np.pi * 1**3 * 1
+        ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
+        ax.axvline(1.0, label="$r=R$", alpha=0.6, ls="--", color="indianred")
+
+    ax.set_xlim([xs[0], xs[-1]])
+    #ax.set_ylim([np.min(Vs), np.max(Vs)])
+
+    ax.legend()
+    ax.grid()
+
+    fig.savefig(path)
     plt.close(fig)
 
 

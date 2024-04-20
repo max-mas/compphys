@@ -28,9 +28,9 @@
 template <typename numeric_type>
 class b_splines {
 public:
-    int order_k; // note: this is equal to n + 1 where n is the polynomial degree of the B_i_k.
-    int num_ghosts; // Number of ghost points, not set by the user.
-    int num_knots; // includes ghosts
+    int order_k{}; // note: this is equal to n + 1 where n is the polynomial degree of the B_i_k.
+    int num_ghosts{}; // Number of ghost points, not set by the user.
+    int num_knots{}; // includes ghosts
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> knot_points; // if numeric_type = double, this is eq. to VectorXd
 
     /**
@@ -40,6 +40,8 @@ public:
      * @param appendGhosts true by default
      */
     b_splines(int orderK, const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & knotPoints);
+
+    b_splines() = default;
 
     /**
      * Public function that returns the ith spline at x.

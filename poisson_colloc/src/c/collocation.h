@@ -1,0 +1,159 @@
+//
+// Created by max on 4/20/24.
+//
+
+#ifndef POISSON_COLLOCATION_H
+#define POISSON_COLLOCATION_H
+
+#include "b_splines.h"
+
+#include <Eigen/Dense>
+
+#include <functional>
+#include <tuple>
+#include <stdexcept>
+#include <string>
+#include <fstream>
+#include <iomanip>
+#include <iostream>
+
+template <typename numeric_type>
+class collocation {
+public:
+    // prefactor of the 1st derivative
+    std::function<numeric_type (numeric_type)> p;
+    // prefactor of the linear term
+    std::function<numeric_type (numeric_type)> q;
+    // RHS
+    std::function<numeric_type (numeric_type)> g;
+    // solution interval
+    std::pair<numeric_type, numeric_type> interval;
+    // boundary conditions, here: f on the boundaries of the interval
+    std::pair<numeric_type, numeric_type> boundary_conditions;
+    // number of physical discretisation points
+    int num_physical_points;
+
+    collocation(const std::function<numeric_type (numeric_type)> & P,
+                const std::function<numeric_type (numeric_type)> & Q,
+                const std::function<numeric_type (numeric_type)> & G,
+                const std::pair<numeric_type, numeric_type> & Interval,
+                const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
+                int Num_Physical_Points);
+
+    collocation() = default;
+
+    void solve();
+
+    numeric_type solution(numeric_type x);
+
+    void save_solution(numeric_type xmin, numeric_type xmax, int num_xs, const std::string & path);
+
+private:
+    bool solved = false;
+
+    b_splines<numeric_type> splines;
+
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> coeff_mat;
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> rhs_vector;
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> solution_coeffs;
+
+};
+
+template<typename numeric_type>
+collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_type)> &P,
+                                       const std::function<numeric_type(numeric_type)> &Q,
+                                       const std::function<numeric_type(numeric_type)> &G,
+                                       const std::pair<numeric_type, numeric_type> &Interval,
+                                       const std::pair<numeric_type, numeric_type> &Boundary_Conditions,
+                                       int Num_Physical_Points):
+p(P), q(Q), g(G), interval(Interval),
+boundary_conditions(Boundary_Conditions), num_physical_points(Num_Physical_Points) {
+    // linspaced knots TODO not always a good choice, add option for self-specified points
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> physical_knots =
+        Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(num_physical_points, interval.first, interval.second);
+
+    // splines class
+    int spline_order = 4; // always the same choice for 2nd order deqn
+    splines = b_splines<numeric_type>(spline_order, physical_knots);
+    int num_knots = splines.num_knots; // = #phys + 6
+    // coeff matrix dimension
+    int num_unknowns = num_knots - spline_order; // = #phys + 2 = N - 4
+
+    coeff_mat = Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(num_unknowns, num_unknowns);
+    rhs_vector = Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::Zero(num_unknowns);
+    // this is not changed here but only after calling solve()
+    solution_coeffs = Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::Zero(num_unknowns);
+
+    // implement boundary conditions
+    coeff_mat(0, 0) = numeric_type(1.0);
+    rhs_vector(0) = boundary_conditions.first;
+    coeff_mat(num_unknowns-1, num_unknowns-1) = numeric_type(1.0);
+    rhs_vector(num_unknowns-1) = boundary_conditions.second;
+    for (int i = 1; i < num_unknowns-1; i++) {
+
+        int position_index = i - 1;
+        numeric_type x = physical_knots(position_index);
+        int min_nonzero_spline = i-1; //TODO correct?? // N - 2
+        int max_nonzero_spline = i + spline_order - 3;
+        if (i == num_unknowns-2) {x -= 1e-12;} // TODO giga annoying workaround
+        for (int n = min_nonzero_spline; n <= max_nonzero_spline; n++) {
+            if (n >= num_unknowns) {
+                continue;
+            } else {
+                coeff_mat(i, n) = splines.B_i_xx(n, x) + p(x) * splines.B_i_x(n, x) + q(x) * splines.B_i(n, x);
+            }
+        }
+
+        rhs_vector(i) = g(x);
+    }
+}
+
+template<typename numeric_type>
+void collocation<numeric_type>::solve() {
+    if (solved) {
+        return;
+    } else {
+        Eigen::PartialPivLU<Eigen::Ref<Eigen::MatrixXd>> LU(coeff_mat);
+        solution_coeffs = LU.solve(rhs_vector);
+        solved = true;
+    }
+}
+
+template<typename numeric_type>
+numeric_type collocation<numeric_type>::solution(numeric_type x) {
+    if (!solved) {
+        throw std::runtime_error("Cannot access solution before calling solve()!");
+    }
+    numeric_type ret = 0;
+    for (int i = 0; i < solution_coeffs.size(); i++) {
+        ret += solution_coeffs(i) * splines.B_i(i, x);
+    }
+
+    return ret;
+}
+
+template<typename numeric_type>
+void
+collocation<numeric_type>::save_solution(numeric_type xmin, numeric_type xmax, int num_xs, const std::string &path) {
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> xs =
+            Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(num_xs, xmin, xmax);
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> fs(num_xs);
+    for (int i = 0; i < num_xs; i++) {
+        fs(i) = solution(xs(i));
+    }
+
+    std::ofstream file;
+    file.open(path);
+    // write
+    for (int j = 0; j < num_xs; j++) {
+        file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
+             << std::scientific << xs[j] << ","
+             << std::scientific << fs[j] << std::endl;
+    }
+    // don't forget to clean up :)
+    file.close();
+
+}
+
+
+#endif //POISSON_COLLOCATION_H
