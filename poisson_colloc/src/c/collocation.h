@@ -16,6 +16,7 @@
 #include <fstream>
 #include <iomanip>
 #include <iostream>
+#include <vector>
 
 template <typename numeric_type>
 class collocation {
@@ -44,6 +45,14 @@ public:
                 const std::function<numeric_type (numeric_type)> & G,
                 const std::pair<numeric_type, numeric_type> & Interval,
                 const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
+                int Num_Physical_Points);
+
+    collocation(const std::function<numeric_type (numeric_type)> & P,
+                const std::function<numeric_type (numeric_type)> & Q,
+                const std::function<numeric_type (numeric_type)> & G,
+                const std::pair<numeric_type, numeric_type> & Interval,
+                const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
+                const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Critical_Points,
                 int Num_Physical_Points);
 
     collocation() = default;
@@ -123,6 +132,49 @@ collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_
     // linspaced knots TODO not always a good choice, add option for self-specified points
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Physical_Knots =
         Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>::LinSpaced(Num_Physical_Points, Interval.first, Interval.second);
+
+    *this = collocation<numeric_type>(P, Q, G, Physical_Knots, Boundary_Conditions);
+}
+
+template<typename numeric_type>
+collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_type)> &P,
+                                       const std::function<numeric_type(numeric_type)> &Q,
+                                       const std::function<numeric_type(numeric_type)> &G,
+                                       const std::pair<numeric_type, numeric_type> &Interval,
+                                       const std::pair<numeric_type, numeric_type> &Boundary_Conditions,
+                                       const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Critical_Points,
+                                       int Num_Physical_Points) {
+    int num_critical_points = Critical_Points.size();
+    numeric_type dx = (Interval.second - Interval.first) / (Num_Physical_Points - 1);
+    numeric_type delta = numeric_type(1e-6); //TODO meh
+    std::vector<numeric_type> linspace = std::vector<numeric_type>();
+
+    int curr_crit_point = 0;
+    numeric_type x = Interval.first;
+    for (int i = 0; i < Num_Physical_Points; i++) {
+        numeric_type next_x = x + dx;
+        numeric_type critp = Critical_Points(curr_crit_point);
+        if (x < critp and next_x > critp and abs(next_x-critp) > delta) {
+            linspace.emplace_back(x);
+            linspace.emplace_back(critp - delta);
+            linspace.emplace_back(critp);
+            linspace.emplace_back(critp + delta);
+            if (num_critical_points > curr_crit_point+1) {curr_crit_point++;}
+        } else if (x < critp and abs(next_x-critp) < delta) {
+            linspace.emplace_back(x);
+            linspace.emplace_back(critp - delta);
+            linspace.emplace_back(critp);
+            linspace.emplace_back(critp + delta);
+            x += dx;
+            if (num_critical_points > curr_crit_point+1) {curr_crit_point++;}
+        } else {
+            linspace.emplace_back(x);
+        }
+        x += dx;
+    }
+
+    Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Physical_Knots =
+            Eigen::Map<Eigen::Matrix<numeric_type, Eigen::Dynamic, 1>>(linspace.data(), linspace.size());
 
     *this = collocation<numeric_type>(P, Q, G, Physical_Knots, Boundary_Conditions);
 }
