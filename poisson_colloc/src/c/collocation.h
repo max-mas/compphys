@@ -18,6 +18,18 @@
 #include <iostream>
 #include <vector>
 
+/**
+ * Class that implements the collocation method for a second order ODE on a real interval with
+ * boundary conditions at the ends.
+ * Suitable for equations of the form:
+ * f'' + p * f' + q * f = g
+ * E.g. Poisson's eqn:
+ * f'' = g
+ * Provides constructors that generate the discretisation on the interval, including extra points near
+ * discontinuities in the RHS if applicable.
+ * @tparam numeric_type Numeric type like float, double that has an
+ *                      order relation "<" (this generally rules out complex numbers!)
+ */
 template <typename numeric_type>
 class collocation {
 public:
@@ -34,12 +46,30 @@ public:
     // number of physical discretisation points
     int num_physical_points;
 
+    /**
+     * Constructor for the collocation class if the discretisation on the interval is supplied externally.
+     * @param P derivative prefactor
+     * @param Q linear prefactor
+     * @param G RHS
+     * @param physical_knots physical points in the discretisation (ghost points are internally appended)
+     * @param Boundary_Conditions boundary conditions
+     */
     collocation(const std::function<numeric_type (numeric_type)> & P,
                 const std::function<numeric_type (numeric_type)> & Q,
                 const std::function<numeric_type (numeric_type)> & G,
                 const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & physical_knots,
                 const std::pair<numeric_type, numeric_type> & Boundary_Conditions);
 
+    /**
+     * Constructor for the collocation class if the discretisation on the interval is
+     * to be generated with linear spacing internally.
+     * @param P derivative prefactor
+     * @param Q linear prefactor
+     * @param G RHS
+     * @param Interval interval
+     * @param Boundary_Conditions boundary conditions
+     * @param Num_Physical_Points number of physical points to be included in the discretisation
+     */
     collocation(const std::function<numeric_type (numeric_type)> & P,
                 const std::function<numeric_type (numeric_type)> & Q,
                 const std::function<numeric_type (numeric_type)> & G,
@@ -47,27 +77,61 @@ public:
                 const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
                 int Num_Physical_Points);
 
+    /**
+     * Constructor for the collocation class if the discretisation on the interval is
+     * to be generated with linear spacing internally and there are points of discontinuity in the RHS.
+     * @param P derivative prefactor
+     * @param Q linear prefactor
+     * @param G RHS
+     * @param Interval interval
+     * @param Boundary_Conditions boundary conditions
+     * @param Critical_Points points of discontinuity in the RHS where the numerics benefit from a tighter
+     *                        grouping of points
+     * @param Num_Physical_Points number of physical points to be included in the discretisation
+     */
     collocation(const std::function<numeric_type (numeric_type)> & P,
                 const std::function<numeric_type (numeric_type)> & Q,
                 const std::function<numeric_type (numeric_type)> & G,
                 const std::pair<numeric_type, numeric_type> & Interval,
                 const std::pair<numeric_type, numeric_type> & Boundary_Conditions,
-                const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Critical_Points,
+                const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & Critical_Points,
                 int Num_Physical_Points);
 
+    /**
+     * Default constructor.
+     */
     collocation() = default;
 
+    /**
+     * Must be called before results are accessible.
+     * Gets the solution basis coefficients using LU factorisation.
+     */
     void solve();
 
+    /**
+     * Returns the previously calculated solution at x.
+     * @param x
+     * @return
+     */
     numeric_type solution(numeric_type x);
 
+    /**
+     * Saves the previously calculated solution on a discrete sample interval.
+     * @param xmin
+     * @param xmax
+     * @param num_xs
+     * @param path Path to a txt file or equivalent
+     */
     void save_solution(numeric_type xmin, numeric_type xmax, int num_xs, const std::string & path);
 
 private:
+    // if false, solution() and save_solution() are inaccessible / throw exceptions
     bool solved = false;
 
+    // b spline object of order 4
     b_splines<numeric_type> splines;
 
+    // coefficient matrix, is destroyed in place by solve()!
     Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic> coeff_mat;
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> rhs_vector;
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> solution_coeffs;
@@ -142,7 +206,7 @@ collocation<numeric_type>::collocation(const std::function<numeric_type(numeric_
                                        const std::function<numeric_type(numeric_type)> &G,
                                        const std::pair<numeric_type, numeric_type> &Interval,
                                        const std::pair<numeric_type, numeric_type> &Boundary_Conditions,
-                                       const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> Critical_Points,
+                                       const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & Critical_Points,
                                        int Num_Physical_Points) {
     int num_critical_points = Critical_Points.size();
     numeric_type dx = (Interval.second - Interval.first) / (Num_Physical_Points - 1);
