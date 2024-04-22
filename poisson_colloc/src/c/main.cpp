@@ -35,7 +35,7 @@ int main() {
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_solidsphere.txt");
     }
-    if (true) {
+    if (false) {
         double charge = 4.0/3.0 * M_PI * pow(1, 3) * 1.0;
         std::pair<double, double> interval({0, 5});
         std::pair<double, double> boundary({0, charge});
@@ -66,7 +66,7 @@ int main() {
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_shell.txt");
     }
-    if (true) {
+    if (false) {
         double charge = (4.0/3.0 * M_PI * 1.0) * (pow(1, 3) - pow(0.8, 3));
         std::pair<double, double> interval({0, 5});
         std::pair<double, double> boundary({0, charge});
@@ -97,7 +97,7 @@ int main() {
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_hydrogen.txt");
     }
-    if (true) {
+    if (false) {
         double charge = 1;
         std::pair<double, double> interval({0, 5});
         std::pair<double, double> boundary({0, charge});
@@ -111,7 +111,7 @@ int main() {
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_hydrogen_test.txt");
     }
-    if (true) {
+    if (false) {
         double charge = 1;
         std::pair<double, double> interval({0, 5});
         std::pair<double, double> boundary({0, charge});
@@ -124,6 +124,20 @@ int main() {
                               num_pts);
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_hydrogen_test2.txt");
+    }
+    if (true) {
+        double charge = 1;
+        std::pair<double, double> interval({0, 14});
+        std::pair<double, double> boundary({0, charge});
+        int num_pts = 1400;
+        collocation<double> c(zero_function<double>,
+                              zero_function<double>,
+                              phi_rhs_hydrogen_2s<double>,
+                              interval,
+                              boundary,
+                              num_pts);
+        c.solve();
+        c.save_solution(0, 14, 500, "../results/solution/solution_hydrogen_2s.txt");
     }
 
     return 0;

@@ -52,6 +52,9 @@ def main():
     plot_error([xs, xs3, xs2], [phis, phis3, phis2], "../../plots/potential_error/error_hydrogen_test.pdf",
                type="hydrogen", pts=["500 linspaced pts", "50 linspaced points", "10 linspaced points"])
 
+    xs, phis = load_B_i_k("../../results/solution/solution_hydrogen_2s.txt")
+    plot_potential(xs, phis, "../../plots/potential/potential_hydrogen_2s.pdf", type="hydrogen2s")
+
     return 0
 
 
@@ -127,24 +130,32 @@ def plot_potential(xs, phis, path, type=None):
     Vs[0] = Vs[1]
 
     fig, ax = plt.subplots()
-    ax.plot(xs[:-1], Vs[:-1], label="$V$, collocation", color="forestgreen")
+    p1, = ax.plot(xs[:-1], Vs[:-1], label="$V$, collocation", color="forestgreen")
+    ax2 = ax.twinx()
 
 
     if type=="solid":
         exact = np.zeros(len(xs))
+        rho = np.zeros(len(xs))
         Q = 4/3 * np.pi * 1**3 * 1
         for i in range(len(xs)):
             if xs[i] <= 1:
                 exact[i] = (3/2 - xs[i]**2 / (2 * 1**2)) * Q
+                rho[i] = 1
             else:
                 exact[i] = (1 / xs[i]) * Q
-        ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
-        ax.axvline(1.0, label="$r=R$", alpha=0.6, ls="--", color="indianred")
+        p2, = ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
+        p3, = ax2.plot(xs, rho, color="mediumorchid", alpha=0.8, label="$\\rho$")
+        p4 = ax.axvline(1.0, label="$r=R$", alpha=0.6, ls="--", color="indianred")
         ax.set_xlabel("$r$ $(R)$")
         ax.set_ylabel("$V(r)$ $(Q/(4\\pi\\varepsilon_0 R))$")
+        ax2.set_ylabel("$\\rho(r)$ $(Q/V)$")
+        plots = [p1, p2, p3, p4]
+        ax2.set_ylim([0, np.max(rho)+0.1])
 
     if type=="shell":
         exact = np.zeros(len(xs))
+        rho = np.zeros(len(xs))
         prefactor = 4 * np.pi * 1
         Q = 4/3 * np.pi * 1 * (1**3 - 0.8**3)
         for i in range(len(xs)):
@@ -152,28 +163,53 @@ def plot_potential(xs, phis, path, type=None):
                 exact[i] = prefactor * (1**2/2 - 1/3 * (0.8**2 + 0.8**2/2))
             elif 0.8 <= xs[i] <= 1:
                 exact[i] = prefactor * (1**2/2 - 1/3 * (0.8**3/xs[i] + xs[i]**2/2))
+                rho[i] = 1
             else:
                 exact[i] = (1 / xs[i]) * Q
-        ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
-        ax.axvline(1.0, label="$r=R_\\text{max}$", alpha=0.6, ls="--", color="indianred")
-        ax.axvline(0.8, label="$r=R_\\text{min}$", alpha=0.6, ls="--", color="indianred")
-        ax.set_xlabel("$r$ $(R)$")
-        ax.set_ylabel("$V(r)$ $(Q/(4\\pi\\varepsilon_0 R))$")
+        p2, = ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
+        p3, = ax2.plot(xs, rho, color="mediumorchid", alpha=0.8, label="$\\rho$")
+        p4 = ax.axvline(1.0, label="$r=R_\\text{max}$", alpha=0.6, ls="--", color="indianred")
+        p5 = ax.axvline(0.8, label="$r=R_\\text{min}$", alpha=0.6, ls="--", color="indianred")
+        ax.set_xlabel("$r$ $(R_\\text{max})$")
+        ax.set_ylabel("$V(r)$ $(Q/(4\\pi\\varepsilon_0 R_\\text{max}))$")
+        ax2.set_ylabel("$\\rho(r)$ $(Q/V)$")
+        plots = [p1, p2, p3, p4, p5]
+        ax2.set_ylim([0, np.max(rho)+0.1])
 
     if type=="hydrogen":
         exact = np.zeros(len(xs))
+        rho = np.zeros(len(xs))
         for i in range(len(xs)):
             exact[i] = (1/xs[i] - np.exp(-2*xs[i]) * (1/xs[i] + 1))
-        ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
-        ax.axvline(1.0, label="$r=a_0$", alpha=0.6, ls="--", color="indianred")
+            rho[i] = 1 / (np.pi) * np.exp(-2*xs[i])
+        p2, = ax.plot(xs, exact, color="mediumblue", ls="-.", alpha=0.8, label="$V$, exact")
+        p3, = ax2.plot(xs, rho, color="mediumorchid", alpha=0.8, label="$\\rho$")
+        #ax.axvline(1.0, label="$r=a_0$", alpha=0.6, ls="--", color="indianred")
         ax.set_xlabel("$r$ $(a_0)$")
         ax.set_ylabel("$V(r)$ $(e/(4\\pi\\varepsilon_0 a_0))$")
+        ax2.set_ylabel("$\\rho(r)$ $(e/a_0^3)$")
+        plots = [p1, p2, p3]
+        ax2.set_ylim([0, np.max(rho)+0.05])
+
+    if type=="hydrogen2s":
+        rho = np.zeros(len(xs))
+        for i in range(len(xs)):
+            rho[i] = 1 / (32 * np.pi) * (2 - xs[i])**2 * np.exp(-xs[i])
+        p2, = ax2.plot(xs, rho, color="mediumorchid", alpha=0.8, label="$\\rho$")
+        #ax.axvline(1.0, label="$r=a_0$", alpha=0.6, ls="--", color="indianred")
+        ax.set_xlabel("$r$ $(a_0)$")
+        ax.set_ylabel("$V(r)$ $(e/(4\\pi\\varepsilon_0 a_0))$")
+        ax2.set_ylabel("$\\rho(r)$ $(e/a_0^3)$")
+        plots = [p1, p2]
+        ax2.set_ylim([0, np.max(rho)])
 
     ax.set_xlim([xs[0], xs[-1]])
-    #ax.set_ylim([np.min(Vs), np.max(Vs)])
+    ax.set_ylim([0, np.max(Vs)+0.1])
+ 
 
-    ax.legend()
+    ax.legend(plots, [plot.get_label() for plot in plots])
     ax.grid()
+    fig.tight_layout()
 
     fig.savefig(path)
     plt.close(fig)
@@ -197,7 +233,7 @@ def plot_error(xss, phiss, path, type, pts):
             ax.plot(xs[:-1], np.abs(Vs - exact)[:-1]/exact[:-1], label=pt)
         ax.axvline(1.0, label="$r=R$", alpha=0.6, ls="--", color="indianred")
         ax.set_xlabel("$r$ $(R)$")
-        ax.set_ylabel("Error $|V'-V|/V$ $(Q/(4\\pi\\varepsilon_0 R))$")
+        ax.set_ylabel("Error $|V'-V|/V$")
         ax.set_yscale("log")
 
     if type=="shell":
@@ -219,7 +255,7 @@ def plot_error(xss, phiss, path, type, pts):
         ax.axvline(1.0, label="$r=R_\\text{max}$", alpha=0.6, ls="--", color="indianred")
         ax.axvline(0.8, label="$r=R_\\text{min}$", alpha=0.6, ls="--", color="indianred")
         ax.set_xlabel("$r$ $(R)$")
-        ax.set_ylabel("Error $|V'-V|/V$ $(Q/(4\\pi\\varepsilon_0 R))$")
+        ax.set_ylabel("Error $|V'-V|/V$")
         ax.set_yscale("log")
 
     if type=="hydrogen":
@@ -231,9 +267,9 @@ def plot_error(xss, phiss, path, type, pts):
             for i in range(len(xs)):
                 exact[i] = (1/xs[i] - np.exp(-2*xs[i]) * (1/xs[i] + 1))
             ax.plot(xs[:-1], np.abs(Vs - exact)[:-1]/exact[:-1], label=pt)
-        ax.axvline(1.0, label="$r=a_0$", alpha=0.6, ls="--", color="indianred")
+        #ax.axvline(1.0, label="$r=a_0$", alpha=0.6, ls="--", color="indianred")
         ax.set_xlabel("$r$ $(a_0)$")
-        ax.set_ylabel("Error $|V'-V|/V$ $(e/(4\\pi\\varepsilon_0 a_0))$")
+        ax.set_ylabel("Error $|V'-V|/V$")
         ax.set_yscale("log")
 
     ax.set_xlim([xss[0][0], xss[0][-1]])

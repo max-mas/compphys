@@ -48,4 +48,14 @@ numeric_type phi_rhs_hydrogen(numeric_type r) {
     return - 4 * pi * r * e / (pi * pow(a_0, 3)) * exp(-2 * r / a_0);
 }
 
+// domain: R+
+template <typename numeric_type>
+numeric_type phi_rhs_hydrogen_2s(numeric_type r) {
+    numeric_type a_0 = numeric_type(1.0);
+    numeric_type e = numeric_type(1.0);
+    numeric_type pi = numeric_type(M_PI);
+    return - 4 * pi * r * e / (32.0 * pi * pow(a_0, 3)) * pow(2 - r/a_0, 2) * exp(-r / a_0);
+}
+
+
 #endif //POISSON_POISSON_FUNCS_H
