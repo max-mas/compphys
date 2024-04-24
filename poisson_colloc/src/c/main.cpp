@@ -21,6 +21,18 @@ int main() {
             b.save_B_i(i, 1000, -1, 11, "../results/B_i_k_xx/", 2);
         }
     }
+    if (true) {
+        double charge = 4.0/3.0 * M_PI * pow(1, 3) * 1.0;
+        std::pair<double, double> interval({0, 6});
+        std::pair<double, double> boundary({0, charge});
+        int num_pts = 7;
+        collocation<double> c(zero_function<double>,
+                              zero_function<double>,
+                              phi_rhs_solid_sphere<double>,
+                              interval,
+                              boundary,
+                              num_pts);
+    }
     if (false) {
         double charge = 4.0/3.0 * M_PI * pow(1, 3) * 1.0;
         std::pair<double, double> interval({0, 5});
@@ -125,7 +137,7 @@ int main() {
         c.solve();
         c.save_solution(0, 5, 500, "../results/solution/solution_hydrogen_test2.txt");
     }
-    if (true) {
+    if (false) {
         double charge = 1;
         std::pair<double, double> interval({0, 14});
         std::pair<double, double> boundary({0, charge});

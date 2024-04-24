@@ -170,7 +170,7 @@ p(P), q(Q), g(G), boundary_conditions(Boundary_Conditions) {
 
         int position_index = i - 1;
         numeric_type x = physical_knots(position_index);
-        int min_nonzero_spline = i-1; //TODO correct?? // N - 2
+        int min_nonzero_spline = i-1;
         int max_nonzero_spline = i + spline_order - 3;
         if (i == num_unknowns-2) {x -= 1e-12;} // TODO giga annoying workaround
         for (int n = min_nonzero_spline; n <= max_nonzero_spline; n++) {
@@ -183,7 +183,7 @@ p(P), q(Q), g(G), boundary_conditions(Boundary_Conditions) {
 
         rhs_vector(i) = g(x);
     }
-
+    std::cout << coeff_mat << std::endl; // Todo RM
 }
 
 template<typename numeric_type>
