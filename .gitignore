@@ -8,6 +8,8 @@ env
 ./qmc/src/cmake-build-release/
 ./poisson_colloc/src/cmake-build-debug/
 ./poisson_colloc/src/cmake-build-release/
+./eig_splines/src/cmake-build-debug/
+./eig_splines/src/cmake-build-release/
 ./qmc/results/
 cmake-build-debug
 cmake-build-release
