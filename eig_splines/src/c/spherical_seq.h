@@ -18,6 +18,7 @@
 #include <iostream>
 #include <fstream>
 #include <string>
+#include <limits>
 //TODO Rm
 #include <fenv.h>
 
@@ -36,21 +37,22 @@ public:
                   unsigned int L = 0,
                   unsigned int splineOrder = 4,
                   const std::vector<std::pair<numeric_type, numeric_type>> & weightsXs
-                    = {{1, -1/sqrt(3)}, {1, 1/sqrt(3)}} );
+                  //  = {{1, -1/sqrt(3)}, {1, 1/sqrt(3)}} );
 
-                  //  = {{5/9, -sqrt(3/5)}, {5/9, sqrt(3/5)}, {8/9, 0}} );
+                  //  = {{5.0/9.0, -sqrt(3.0/5.0)}, {5.0/9.0, sqrt(3.0/5.0)}, {8.0/9.0, 0.0}} );
 
-                  //= {{(18 + sqrt(30))/36, -sqrt(3/7 - 2/7 * sqrt(6/5))},
-                  //   {(18 + sqrt(30))/36,  sqrt(3/7 - 2/7 * sqrt(6/5))},
-                  //   {(18 - sqrt(30))/36, -sqrt(3/7 + 2/7 * sqrt(6/5))},
-                  //   {(18 - sqrt(30))/36,  sqrt(3/7 - 2/7 * sqrt(6/5))}} );
+                  = {{(18.0 + sqrt(30.0))/36.0, -sqrt(3.0/7.0 - 2.0/7.0 * sqrt(6.0/5.0))},
+                     {(18.0 + sqrt(30.0))/36.0,  sqrt(3.0/7.0 - 2.0/7.0 * sqrt(6.0/5.0))},
+                     {(18.0 - sqrt(30.0))/36.0, -sqrt(3.0/7.0 + 2.0/7.0 * sqrt(6.0/5.0))},
+                     {(18.0 - sqrt(30.0))/36.0,  sqrt(3.0/7.0 + 2.0/7.0 * sqrt(6.0/5.0))}} );
 
 
     void solve();
 
     numeric_type solution_n(unsigned int n, numeric_type r);
 
-    void save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmax, const std::string & path);
+    void save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmin, numeric_type rmax,
+                         const std::string & path);
 
     // spherically symmetric potential V(r)
     std::function<numeric_type (numeric_type)> V;
@@ -89,7 +91,7 @@ private:
     int imin(int i, int j);
     int imax(int i, int j);
 
-
+    void normalise_states();
 };
 
 template<typename numeric_type>
@@ -137,18 +139,21 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
 template<typename numeric_type>
 numeric_type spherical_seq<numeric_type>::solution_n(unsigned int n, numeric_type r) {
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> coeffs = this->solution_coeffs.col(n);
+    if (r == 0) {
+        r = std::numeric_limits<numeric_type>::min();
+    }
     numeric_type ret = 0;
     for (int i = 1; i < this->splines.num_knots - this->spline_order - 2; i++) {
         ret += coeffs(i) * this->splines.B_i(i, r);
     }
-    // dont forget to divide by r
-    return ret/r ;
+    // dont forget to divide by r, prevent div by 0
+    return ret/r;
 }
 
 template<typename numeric_type>
-void spherical_seq<numeric_type>::save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmax,
-                                                  const std::string & path) {
-    Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(n_samples, 0, rmax);
+void spherical_seq<numeric_type>::save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmin,
+                                                  numeric_type rmax, const std::string & path) {
+    Eigen::VectorXd points = Eigen::VectorXd::LinSpaced(n_samples, rmin, rmax);
 
     std::ofstream file;
     file.open(path);
@@ -168,7 +173,23 @@ void spherical_seq<numeric_type>::solve() {
         es(this->H, this->B);
     this-> energies = es.eigenvalues();
     this->solution_coeffs = es.eigenvectors();
+    this->normalise_states();
     this->solved = true;
+}
+
+template<typename numeric_type>
+void spherical_seq<numeric_type>::normalise_states() {
+    //feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT); // TODO RM
+    for (int i = 0; i < this->solution_coeffs.cols(); i++) {
+        numeric_type integral = 0.0;
+        for (int j = 1; j < this->physical_points.size(); j++) {
+            numeric_type dr = this->physical_points(j) - this->physical_points(j-1);
+            numeric_type  r = this->physical_points(j-1) + dr/2;
+            //
+            integral += pow(r * solution_n(i, r),2) * dr;
+        }
+        this->solution_coeffs.col(i) /= integral;
+    }
 }
 
 template<typename numeric_type>
@@ -189,7 +210,8 @@ numeric_type spherical_seq<numeric_type>::H_B_i(unsigned int i, numeric_type r) 
     numeric_type ret = 0.0;
     ret += - this->splines.B_i_xx(i, r) / 2;
     // prevent div by 0
-    ret += (this->l * (this->l + 1) / (2 * ((r > 1e-15) ? pow(r, 2) : 1e-15)) + this->V(r)) * this->splines.B_i(i, r);
+    //ret += (this->l * (this->l + 1) / (2 * ((r > 1e-15) ? pow(r, 2) : pow(1e-15, 2))) + this->V(r)) * this->splines.B_i(i, r);
+    ret += (r!= 0) ? (this->l * (this->l + 1) / (2 * (pow(r, 2))) + this->V(r)) * this->splines.B_i(i, r) : 0.0;
 
     return ret;
 }

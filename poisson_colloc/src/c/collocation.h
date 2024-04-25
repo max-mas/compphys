@@ -248,10 +248,12 @@ void collocation<numeric_type>::solve() {
     if (solved) {
         return;
     } else {
+        std::cout << coeff_mat << std::endl;
         Eigen::PartialPivLU<Eigen::Ref<Eigen::MatrixXd>> LU(coeff_mat);
         solution_coeffs = LU.solve(rhs_vector);
         solved = true;
     }
+    std::cout << solution_coeffs << std::endl;
 }
 
 template<typename numeric_type>

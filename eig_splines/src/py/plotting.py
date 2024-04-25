@@ -1,8 +1,9 @@
 import matplotlib.pyplot as plt
 import matplotlib
 import numpy as np
+import scipy.special
 import seaborn as sns
-from scipy.special import sph_harm
+from scipy.special import sph_harm, factorial, assoc_laguerre
 
 # For nicer plots, requires a fairly full TeXlive install
 plt.rcParams.update({
@@ -20,21 +21,18 @@ plt.rcParams.update({
 
 
 def main():
-    xs, psi_rad = load_state("../../results/states/rad_wf_n1_l0_m0.txt")
-    plot_wf(xs, psi_rad, 1, 0, "../../plots/psis/test1.pdf")
-    xs, psi_rad = load_state("../../results/states/rad_wf_n1_l0_m0.txt")
-    plot_wf_err(xs, psi_rad, 1, 0, "../../plots/psis_err/test1.pdf")
-
-    xs, psi_rad = load_state("../../results/states/rad_wf_n2_l0_m0.txt")
-    plot_wf(xs, psi_rad, 2, 0, "../../plots/psis/test2.pdf")
-    xs, psi_rad = load_state("../../results/states/rad_wf_n2_l0_m0.txt")
-    plot_wf_err(xs, psi_rad, 2, 0, "../../plots/psis_err/test2.pdf")
-
-    xs, psi_rad = load_state("../../results/states/rad_wf_n3_l0_m0.txt")
-    plot_wf(xs, psi_rad, 3, 0, "../../plots/psis/test3.pdf")
-    xs, psi_rad = load_state("../../results/states/rad_wf_n3_l0_m0.txt")
-    plot_wf_err(xs, psi_rad, 3, 0, "../../plots/psis_err/test3.pdf")
-    return 0
+    for l in range(5):
+        for n in range(1, 10):
+            try:
+                path = "../../results/states/rad_wf_l" + str(l) + "_n" + str(n) + "_m0.txt"
+                outpath1 = "../../plots/psis/l" + str(l) + "_n" + str(n) + ".pdf"
+                outpath2 = "../../plots/psis_err/l" + str(l) + "_n" + str(n) + "l0.pdf"
+                xs, psi_rad = load_state(path)
+                plot_wf(xs, psi_rad, n, l, outpath1)
+                xs, psi_rad = load_state(path)
+                plot_wf_err(xs, psi_rad, n, l, outpath2)
+            except FileNotFoundError:
+                break
 
 
 def load_state(path):
@@ -59,30 +57,19 @@ def plot_wf(xs, psi_rad, n, l, path):
     fig, ax = plt.subplots()
     n_str = str(n)
     l_str = str(l)
-    sign = psi_rad[1] / np.abs(psi_rad[1])
+    sign = psi_rad[0] / np.abs(psi_rad[0])
+    psi_rad[0] = psi_rad[1]
     #ax.plot(xs[1:], sign * psi_rad[1:] / np.max(np.abs(psi_rad[1:])),
     #        label="$R_{" + n_str + "," + l_str + "}$, numerical")
-    ax.plot(xs[1:], sign*psi_rad[1:]/np.abs(psi_rad[1]),
-            label="$R_{" + n_str + "," + l_str + "}$, numerical")
-    if n == 1:
-        exact = np.exp(-xs[1:])
-        exact /= exact[0]
-        ax.plot(xs[1:], exact, label="$R_{" + n_str + "," + l_str + "}$, exact")
-    elif n == 2 and l == 0:
-        exact = (2 - xs[1:]) * np.exp(-xs[1:]/2) / 2
-        exact /= exact[0]
-        ax.plot(xs[1:], exact, label="$R_{" + n_str + "," + l_str + "}$, exact")
-    elif n == 3 and l == 0:
-        exact = (3 - 2*xs[1:] + 2/9 * xs[1:]**2) * np.exp(-xs[1:]/3) / 3
-        exact /= exact[0]
-        ax.plot(xs[1:], exact, label="$R_{" + n_str + "," + l_str + "}$, exact")
-    #ax.scatter(xs, 0*xs, color="red", marker="*", label="Knots")
+    ax.plot(xs, sign * psi_rad, label="$R_{" + n_str + "," + l_str + "}$, numerical", color="forestgreen")
+    exact = psi_rad_exact(n, l, xs)
+    ax.plot(xs, exact, label="$R_{" + n_str + "," + l_str + "}$, exact", color="mediumblue", ls="-.", alpha=0.7)
 
 
     ax.set_xlabel("$r$ $(a_0)$")
     ax.set_ylabel("$R_{nl}$")
     ax.set_xlim(0, 20)
-    #
+    ax.grid()
     ax.legend()
 
     fig.savefig(path)
@@ -95,20 +82,10 @@ def plot_wf_err(xs, psi_rad, n, l, path):
     fig, ax = plt.subplots()
     n_str = str(n)
     l_str = str(l)
-    sign = psi_rad[1] / np.abs(psi_rad[1])
-    psi_rad = sign*psi_rad[1:]/np.abs(psi_rad[1])
-    if n == 1:
-        exact = np.exp(-xs[1:])
-        exact /= exact[0]
-        ax.plot(xs[1:], np.abs(((exact - psi_rad)/np.abs(exact))))
-    elif n == 2 and l == 0:
-        exact = (2 - xs[1:]) * np.exp(-xs[1:]/2) / 2
-        exact /= exact[0]
-        ax.plot(xs[1:], np.abs(((exact - psi_rad)/np.abs(exact))))
-    elif n == 3 and l == 0:
-        exact = (3 - 2*xs[1:] + 2/9 * xs[1:]**2) * np.exp(-xs[1:]/3) / 3
-        exact /= exact[0]
-        ax.plot(xs[1:], np.abs(((exact - psi_rad)/np.abs(exact))))
+    sign = psi_rad[0] / np.abs(psi_rad[0])
+    psi_rad = sign * psi_rad / np.abs(psi_rad[0])
+    exact = psi_rad_exact(n, l, xs)
+    ax.plot(xs[1:], np.abs((exact - psi_rad) / np.abs(exact))[1:], color="indianred")
 
     #ax.scatter(xs, 0*xs, color="red", marker="*", label="Knots")
 
@@ -116,9 +93,17 @@ def plot_wf_err(xs, psi_rad, n, l, path):
     ax.set_ylabel("$|R_{nl}-R'_{nl}|/|R_{nl}|$")
     ax.set_xlim(0, 20)
     ax.set_yscale("log")
+    ax.grid()
     #ax.legend()
 
     fig.savefig(path)
     plt.close(fig)
+
+
+def psi_rad_exact(n, l, r):
+    rho = 2 * r / n
+    return np.sqrt((2 / n) ** 3 * factorial(n - l - 1) / (2 * n * factorial(n + l))) * np.exp(-rho / 2) * rho ** l \
+        * assoc_laguerre(rho, n - l - 1, 2 * l + 1)
+
 
 main()
