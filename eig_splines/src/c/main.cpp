@@ -11,7 +11,7 @@
 #include <string>
 
 int main() {
-    int N = 600;
+    int N = 1200;
     Eigen::VectorXd points = Eigen::VectorXd::Zero(N);
     double delta = 1e-5;
     double exponent = 0;
@@ -22,7 +22,7 @@ int main() {
         exponent += exponent_step;
     }
     std::cout << "Last point = " << points(Eigen::indexing::last) << std::endl;
-    int l_max = 4;
+    int l_max = 10;
     for (int l = 0; l <= l_max; l++) {
         spherical_seq<double> s(points, coulomb<double>, l);
         s.solve();
@@ -33,9 +33,12 @@ int main() {
             if (e < 0) {n_max++;} else break;
         }
         for (int n = 0; n <= n_max; n++) {
-            std::string path = "../results/states/rad_wf_l" + std::to_string(l) + "_n" + std::to_string(n+1) + "_m0.txt";
-            s.save_solution_n(n, 1000, 1e-4, 30, path);
+            std::string path_state = "../results/states/rad_wf_l" + std::to_string(l) + "_n"
+                    + std::to_string(n+1+l) + "_m0.txt";
+            s.save_solution_n(n, 1000, 1e-4, points(Eigen::indexing::last), path_state);
         }
+        std::string path_energy = "../results/energies/energies_l" + std::to_string(l) + ".txt";
+        s.save_energies(path_energy);
     }
 
 

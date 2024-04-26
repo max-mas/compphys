@@ -54,6 +54,8 @@ public:
     void save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmin, numeric_type rmax,
                          const std::string & path);
 
+    void save_energies(const std::string & path);
+
     // spherically symmetric potential V(r)
     std::function<numeric_type (numeric_type)> V;
 
@@ -162,6 +164,20 @@ void spherical_seq<numeric_type>::save_solution_n(unsigned int n, unsigned int n
         file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
              << std::scientific << points[j] << ","
              << std::scientific << solution_n(n, points[j]) << std::endl;
+    }
+    // don't forget to clean up :)
+    file.close();
+}
+
+template<typename numeric_type>
+void spherical_seq<numeric_type>::save_energies(const std::string &path) {
+    std::ofstream file;
+    file.open(path);
+    // write
+    for (int j = 0; j < this->energies.size(); j++) {
+        file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
+             << std::scientific << j+1+this->l << ","
+             << std::scientific << energies(j) << std::endl;
     }
     // don't forget to clean up :)
     file.close();
