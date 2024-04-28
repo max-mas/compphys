@@ -1,6 +1,13 @@
-//
-// Created by max on 4/24/24.
-//
+/**
+ * @file spherical_seq.h
+ * @author Max Maschke (m.maschke@tu-bs.de)
+ * @brief Templated class that solves the Schrödinger equation for shperically
+ * symmetric Problems.
+ * @date 2024-04-28
+ * 
+ * @copyright Copyright (c) 2024 Max Maschke
+ * 
+ */
 
 #ifndef EIG_SPLINES_SPHERICAL_SEQ_H
 #define EIG_SPLINES_SPHERICAL_SEQ_H
@@ -22,6 +29,14 @@
 //TODO Rm
 #include <fenv.h>
 
+/**
+ * @brief Spherical Schrödinger equation solver.
+ * Class that solves the 1 particle 3D Schrödinger equation using B-splines. Specifically, the radial part of
+ * the wave function R_ln (r) is obtained as an expansion in splines by solving a generalised 
+ * Eigenvalue problem.
+ * Atomic units are used.
+ * @tparam numeric_type Real floating point type.
+ */
 template <typename numeric_type>
 class spherical_seq {
 public:
@@ -30,8 +45,28 @@ public:
     // angular momentum sector
     unsigned int l;
 
+    /**
+     * @brief Default constructor
+     * Construct a new default spherical seq object.
+     */
     spherical_seq() = default;
 
+    /**
+     * @brief Constructor.
+     * Construct a new default spherical seq object from a specified vector of knot points
+     * and a potential V(r). The angular momentum sector l must also be specified.
+     * V(r) should return an energy in Hartree.
+     * By default, 4th order splines are used. The weights and points for the Gauss-Legendre
+     * quadrature can be changed optionally.
+     * Generates the matrices H and B for the generalised eigenvalue problem.
+     * Appropriate boundary conditions are automatically implemented (P_nl(0) =P _nl(infty) = 0).
+     * @param physicalPoints Vector containing the physical points for the splines.
+     * @param potential Potential function V(r), [V] != H (Hartree)
+     * @param L Angular momentum quantum number, L > 0. Default: 0
+     * @param splineOrder Order of the splines to be used. Must be >= 4. Default: 4
+     * @param weightsXs Parameters for Gauss-Legendre integration. Uses n=4 weights by default.
+     * 
+     */
     spherical_seq(const Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> & physicalPoints,
                   const std::function<numeric_type (numeric_type)> & potential,
                   unsigned int L = 0,
@@ -47,13 +82,35 @@ public:
                      {(18.0 - sqrt(30.0))/36.0,  sqrt(3.0/7.0 + 2.0/7.0 * sqrt(6.0/5.0))}} );
 
 
+    /** 
+     * Performs the solution of the generalised eigenvalue problem.
+     * Must be called before the solutions are accessible.
+    */
     void solve();
 
+    /**
+     * @brief N-th solution of the SEQn.
+     * Returns R_nl (r)
+     * @param n n = 0, ..., N-k: Main/radial quantum number.
+     * @param r Radial coordinate
+     * @return numeric_type 
+     */
     numeric_type solution_n(unsigned int n, numeric_type r);
 
+    /**
+     * Save the n-th solution to a txt-file. 
+     * @param n n = 0, ..., N-k: Main/radial quantum number.
+     * @param n_samples Number of r samples for which to save R_nl (r)
+     * @param rmin, rmax Range in which to sample the solution.
+     * @param path Path to a .txt file
+     */
     void save_solution_n(unsigned int n, unsigned int n_samples, numeric_type rmin, numeric_type rmax,
                          const std::string & path);
 
+    /** 
+     * Save the generalised eigenvalues to a txt-file.
+     * @param path Path to a .txt file
+     */
     void save_energies(const std::string & path);
 
     // spherically symmetric potential V(r)
@@ -80,19 +137,60 @@ private:
 
     // Gauss weights and points
     std::vector<std::pair<numeric_type, numeric_type>> weights_xs;
-    // Gaussian integration
+    
+    /** 
+     * Performs Gaussian integration of a function f on an interval [a, b] using the weights stored
+     * as class members. For n weights, this is exact for polynomials up to degree n-1.
+     * @param a, b Interval bounds
+     * @param f Single variable function.
+     * @return numeric_type Integral \int_a^b f(x) dx
+     */
     numeric_type gauss_int(numeric_type a, numeric_type b,
                            const std::function<numeric_type (numeric_type)> & f);
-    // Hamiltonian on spline
+    
+    /**
+     * Action of the Hamiltonian on the i-th spline.
+     * @param i Spline index.
+     * @param r Radial coordinate.
+     * @return numeric_type 
+     */
     numeric_type H_B_i(unsigned int i, numeric_type r);
-    // integrand lhs
+    
+    /**
+     * Integrand of the matrix element h_ij.
+     * @param i, j Matrix element indices, 0 <= i,j <= N-k
+     * @param r Radial coordinate
+     * @return numeric_type 
+     */
     numeric_type h_ij(unsigned int i, unsigned int j, numeric_type r);
-    // integrand rhs
+    
+    /**
+     * Integrand of the matrix element b_ij.
+     * @param i, j Matrix element indices, 0 <= i,j <= N-k
+     * @param r Radial coordinate
+     * @return numeric_type 
+     */
     numeric_type b_ij(unsigned int i, unsigned int j, numeric_type r);
-    //
+    
+    /**
+     * Returns minimum of two integers i and j.
+     * @param i 
+     * @param j 
+     * @return int 
+     */
     int imin(int i, int j);
+
+    /**
+     * Returns maximum of two integers i and j.
+     * @param i 
+     * @param j 
+     * @return int 
+     */
     int imax(int i, int j);
 
+    /**
+     * Normalises the states according to \int_0^\infty P_nl^2(r) dr = 1
+     */
     void normalise_states();
 };
 
@@ -112,8 +210,7 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
 
     this->H = Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(N - k - 2, N - k - 2);
     this->B = Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(N - k - 2, N - k - 2);
-
-    //feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT); // TODO RM
+    
     // we don't use the first and last spline to enforce bcs
     for (int i = 1; i < N - k - 1; i++) {
         for (int j = 1; j < N - k - 1; j++) {
@@ -122,9 +219,6 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
             int m_min = imax(i, j);
             int m_max = imin(i, j) + k - 1;
             for (int m = m_min; m <= m_max; m++) {
-            //for (int m =0 ; m < N-1; m++) {
-                //std::cout << m+1 << ";" << this->physical_points.size() << std::endl;
-                //if (m == 0 or m+1 >= this->physical_points.size()-1) {continue;}
                 numeric_type t_m = this->splines.knot_points(m);
                 numeric_type t_m1 = this->splines.knot_points(m+1);
                 h += gauss_int(t_m, t_m1, [&i, &j, this](numeric_type r){return this->h_ij(i, j, r);});
@@ -134,7 +228,6 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
             B(i-1, j-1) = b;
         }
     }
-    //std::cout << H << std::endl << std::endl << B << std::endl; // TODO RM
 }
 
 
@@ -195,7 +288,6 @@ void spherical_seq<numeric_type>::solve() {
 
 template<typename numeric_type>
 void spherical_seq<numeric_type>::normalise_states() {
-    //feenableexcept(FE_ALL_EXCEPT & ~FE_INEXACT); // TODO RM
     for (int i = 0; i < this->solution_coeffs.cols(); i++) {
         numeric_type integral = 0.0;
         for (int j = 1; j < this->physical_points.size(); j++) {
@@ -222,7 +314,6 @@ numeric_type spherical_seq<numeric_type>::gauss_int(numeric_type a, numeric_type
 
 template<typename numeric_type>
 numeric_type spherical_seq<numeric_type>::H_B_i(unsigned int i, numeric_type r) {
-    // TODO UNITS!
     numeric_type ret = 0.0;
     ret += - this->splines.B_i_xx(i, r) / 2;
     // prevent div by 0

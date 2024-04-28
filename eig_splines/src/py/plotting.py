@@ -51,18 +51,21 @@ def main():
             except FileNotFoundError:
                 print("State l =", l, "n =", n, "not found. Plotting.")
                 outpath = "../../plots/psis_comp/l" + str(l) + ".pdf"
+                outpath_ortho = "../../plots/ortho/l" + str(l) + ".pdf"
                 plot_multiple_wfs(xs, psis, l, np.arange(n)+1+l, outpath)
+                plot_orthogonality(psis, xs[1]-xs[0], l, outpath_ortho)
                 break
             else:
                 psis.append(psi_rad)
 
+    
     print("Plotting energies.")
     ns_outer = []
     ergs_outer = []
     lmax = 10
     ls = np.arange(lmax+1)
     for l in range(lmax+1):
-        print("Searching l =", l, " energies.")
+        print("Searching l =", l, "energies.")
         path = "../../results/energies/energies_l" + str(l) + ".txt"
         try:
             ns, ergs = load_neg_ergs(path)
@@ -78,6 +81,13 @@ def main():
     plot_energies(ns_outer, ergs_outer, ls, outpath)
     plot_energies(ns_outer, ergs_outer, ls, outpath_log, log=True)
     plot_energies_err(ns_outer, ergs_outer, ls, outpath_err)
+    
+
+    print("Plotting number of bound states and GS errs.")
+    ns, num_ls, num_exp = load_bound_nums("../../results/ns.txt")
+    ns, errs_ls, errs_exp = load_gs_err("../../results/gs_err.txt")
+    plot_ns_errs(ns, num_ls, num_exp, errs_ls, errs_exp, "../../plots/ns_errs.pdf")
+    
 
 def load_state(path):
     file = open(path)
@@ -111,6 +121,42 @@ def load_neg_ergs(path):
         neg_ergs.append(float(nums[1]))
 
     return np.asarray(ns, dtype=np.int64), np.asarray(neg_ergs)
+
+
+def load_bound_nums(path):
+    file = open(path)
+    lines = file.readlines()
+    n = len(lines)
+
+    ns = np.zeros(n, dtype=np.int64)
+    num_ls = np.zeros(n, dtype=np.int64)
+    num_exp = np.zeros(n, dtype=np.int64)
+
+    for i in range(n):
+        nums = lines[i].split(",")
+        ns[i] = int(nums[0])
+        num_ls[i] = int(nums[1])
+        num_exp[i] = int(nums[2])
+
+    return ns, num_ls, num_exp
+
+
+def load_gs_err(path):
+    file = open(path)
+    lines = file.readlines()
+    n = len(lines)
+
+    ns = np.zeros(n, dtype=np.int64)
+    errs_ls = np.zeros(n, dtype=np.double)
+    errs_exp = np.zeros(n, dtype=np.double)
+
+    for i in range(n):
+        nums = lines[i].split(",")
+        ns[i] = int(nums[0])
+        errs_ls[i] = float(nums[1])
+        errs_exp[i] = float(nums[2])
+
+    return ns, errs_ls, errs_exp
 
 
 def plot_wf(xs, psi_rad, n, l, path):
@@ -168,6 +214,8 @@ def plot_multiple_wfs(xs, wfs, l, ns, path):
     sns.set_palette("colorblind")
     fig, ax = plt.subplots()
     for i in range(len(wfs)):
+        if i > 4:
+            break
         n = ns[i]
         wf = wfs[i]
         n_str = str(n)
@@ -175,15 +223,35 @@ def plot_multiple_wfs(xs, wfs, l, ns, path):
         sign = wf[0] / np.abs(wf[0])
         #wf[0] = wf[1]
         exact = psi_rad_exact(n, l, xs)
-        p, = ax.plot(xs, sign * wf, label=f"$n,l={n},{l}$")
-        ax.plot(xs, exact, color=p.get_color(), alpha=0.7, ls="-.")
+        p, = ax.plot(xs, sign * wf, label=f"$n,l={n},{l}$, numerical")
+        ax.plot(xs, exact, color=p.get_color(), alpha=0.7, ls="-.", label=f"$n,l={n},{l}$, exact")
 
     ax.set_xlabel("$r$ $(a_0)$")
     ax.set_ylabel("$R_{nl}(r)$")
-    #upperlim_l = [10, 30, xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1]]
-    ax.set_xlim(0, xs[-1])
+    upperlim_l = [10, 30, xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1], xs[-1]]
+    ax.set_xlim(0, upperlim_l[l])
     ax.grid()
     ax.legend()
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
+
+def plot_orthogonality(wfs, dx, l, path):
+    n = len(wfs)
+    orthonormality_matrix = np.zeros((n, n))
+    for i in range(n):
+        for j in range(n):
+            orthonormality_matrix[i, j] = np.abs(np.dot(wfs[i], wfs[j])) * dx
+
+    fig, ax = plt.subplots()
+    ms = ax.matshow(orthonormality_matrix, norm=mpl.colors.LogNorm(), cmap="PuBuGn")
+    fig.colorbar(ms)
+    ax.set_xlabel("$n$")
+    ax.tick_params(axis="x", bottom=True, top=False, labelbottom=True, labeltop=False)
+    ax.set_ylabel("$n'$")
+    fig.suptitle("$O_{nn'} = \\left|\\braket{nl|n'l}\\right|$")
 
     fig.tight_layout()
     fig.savefig(path)
@@ -208,9 +276,9 @@ def plot_energies(ns_outer, ergs_outer, ls, path, log=False):
             p = ax.scatter(ll - 0.1, erg_num, color=cols1[nn-1], label="numerical", marker=">")
             q = ax.scatter(ll+ 0.1, erg_exact, color=cols1[nn-1], label="exact", marker="<")
 
-    r = ax.axhline(-sign*H/2, color="indianred", alpha=0.7, ls="-.", label="1 Ry")
+    r = ax.axhline(-sign*H/2, color="indianred", alpha=0.7, ls="-.", label="$-1$ Ry")
     f, = ax.plot(ls, -sign * H/2 * 1/(ls+1)**2, ls="--", alpha=0.7, color="mediumorchid",
-                  label="$\\text{Ry}/n_\\text{min}^2 = \\text{Ry}/(l+1)^2$")
+                  label="$-1\\,\\text{Ry}/n_\\text{min}^2 = -1\\,\\text{Ry}/(l+1)^2$")
 
     norm = mpl.colors.Normalize(1, 12)
     divider = make_axes_locatable(plt.gca())
@@ -265,6 +333,35 @@ def plot_energies_err(ns_outer, ergs_outer, ls, path):
     fig.tight_layout()
     fig.savefig(path)
     plt.close(fig)
+
+
+def plot_ns_errs(ns, num_ls, num_exp, errs_ls, errs_exp, path):
+    fig, ax = plt.subplots()
+    ax2 = ax.twinx()
+
+    p1, = ax.plot(ns, num_ls, label="$n_\\text{bound}$ linspaced", color="mediumblue")
+    p2, = ax.plot(ns, num_exp, label="$n_\\text{bound}$ exponential", color="firebrick")
+
+    H = 27.211386245988
+    p3, = ax2.plot(ns, H*errs_ls, label="$\\Delta E_\\text{GS}$ linspaced", color="mediumblue", ls="--")
+    p4, = ax2.plot(ns, H*errs_exp, label="$\\Delta E_\\text{GS}$ exponential", color="firebrick", ls="--")
+
+    ax.set_xlabel("Number of physical knots $N-k$")
+    ax.set_ylabel("Number of bound states $n$")
+    ax2.set_ylabel("GS energy error $\\Delta E_\\text{GS}$ (eV)")
+    ax.grid()
+    ax2.set_yscale("log")
+    ax.set_xscale("log")
+    plots = [p1, p2, p3, p4]
+    ax2.legend(plots, [plot.get_label() for plot in plots], loc="upper right")
+    ax.set_ylim([0, 9])
+    ax2.set_ylim([1e-12, 1e2])
+    #ax.set_xlim([1, 1200])
+
+    fig.tight_layout()
+    fig.savefig(path)
+    plt.close(fig)
+
 
 
 def psi_rad_exact(n, l, r):

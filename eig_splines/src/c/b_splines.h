@@ -1,6 +1,13 @@
-//
-// Created by max on 4/19/24.
-//
+/**
+ * @file b_splines.h
+ * @author Max Maschke (m.maschke@tu-bs.de)
+ * @brief 
+ * @version 0.1
+ * @date 2024-04-28
+ * 
+ * @copyright Copyright (c) 2024 Max Maschke
+ * 
+ */
 
 #ifndef POISSON_B_SPLINES_H
 #define POISSON_B_SPLINES_H
