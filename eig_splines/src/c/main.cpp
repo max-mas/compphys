@@ -51,7 +51,7 @@ int main() {
             s.save_energies(path_energy);
         }
     }
-    if (true) {
+    if (false) {
         int nn = 20;
         Eigen::VectorXi ns = Eigen::VectorXi::LinSpaced(nn, 5, 100);
         std::vector<std::pair<int, int>> num_bound_states;
