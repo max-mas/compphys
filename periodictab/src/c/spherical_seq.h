@@ -28,6 +28,7 @@
 #include <limits>
 //TODO Rm
 #include <fenv.h>
+#include <boost/math/quadrature/exp_sinh.hpp>
 
 /**
  * @brief Spherical Schrödinger equation solver.
@@ -235,11 +236,11 @@ template<typename numeric_type>
 numeric_type spherical_seq<numeric_type>::solution_n(unsigned int n, numeric_type r) {
     Eigen::Matrix<numeric_type, Eigen::Dynamic, 1> coeffs = this->solution_coeffs.col(n);
     if (r == 0) {
-        r = std::numeric_limits<numeric_type>::min();
+        r = std::numeric_limits<numeric_type>::epsilon(); //todo changed from min()
     }
     numeric_type ret = 0;
     for (int i = 1; i < this->splines.num_knots - this->spline_order - 2; i++) {
-        ret += coeffs(i) * this->splines.B_i(i, r);
+        ret += coeffs(i-1) * this->splines.B_i(i, r); // *gravestone emoji*
     }
     // dont forget to divide by r, prevent div by 0
     return ret/r;
@@ -279,8 +280,8 @@ void spherical_seq<numeric_type>::save_energies(const std::string &path) {
 template<typename numeric_type>
 void spherical_seq<numeric_type>::solve() {
     Eigen::GeneralizedSelfAdjointEigenSolver<Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>>
-        es(this->H, this->B);
-    this-> energies = es.eigenvalues();
+        es(this->H, this->B, Eigen::ComputeEigenvectors);
+    this->energies = es.eigenvalues();
     this->solution_coeffs = es.eigenvectors();
     this->normalise_states();
     this->solved = true;
@@ -289,14 +290,11 @@ void spherical_seq<numeric_type>::solve() {
 template<typename numeric_type>
 void spherical_seq<numeric_type>::normalise_states() {
     for (int i = 0; i < this->solution_coeffs.cols(); i++) {
-        numeric_type integral = 0.0;
-        for (int j = 1; j < this->physical_points.size(); j++) {
-            numeric_type dr = this->physical_points(j) - this->physical_points(j-1);
-            numeric_type  r = this->physical_points(j-1) + dr/2;
-            //
-            integral += pow(r * solution_n(i, r),2) * dr;
-        }
-        this->solution_coeffs.col(i) /= integral;
+        if (this->energies(i) > 0) break; // ordered! only normalise bound states, rest: who cares?
+
+        numeric_type integral2 = this->solution_coeffs.col(i).transpose() * this->B * this->solution_coeffs.col(i);
+
+        this->solution_coeffs.col(i) /= sqrt(integral2);
     }
 }
 
@@ -312,13 +310,12 @@ numeric_type spherical_seq<numeric_type>::gauss_int(numeric_type a, numeric_type
 
 }
 
-template<typename numeric_type>
+template<typename numeric_type> //TODO check change valid
 numeric_type spherical_seq<numeric_type>::H_B_i(unsigned int i, numeric_type r) {
+    if (r <= 0.0) r = std::numeric_limits<numeric_type>::epsilon();
     numeric_type ret = 0.0;
     ret += - this->splines.B_i_xx(i, r) / 2;
-    // prevent div by 0
-    //ret += (this->l * (this->l + 1) / (2 * ((r > 1e-15) ? pow(r, 2) : pow(1e-15, 2))) + this->V(r)) * this->splines.B_i(i, r);
-    ret += (r!= 0) ? (this->l * (this->l + 1) / (2 * (pow(r, 2))) + this->V(r)) * this->splines.B_i(i, r) : 0.0;
+    ret += (this->l * (this->l + 1) / (2 * (pow(r, 2))) + this->V(r)) * this->splines.B_i(i, r);
 
     return ret;
 }
