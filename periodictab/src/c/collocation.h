@@ -1,6 +1,13 @@
-//
-// Created by max on 4/20/24.
-//
+/**
+ * @file collocation.h
+ * @author Max Maschke (m.maschke@tu-bs.de)
+ * @brief Templated class that solves 2nd order one dimensional boundary value problems,
+ * such as Poisson's equation for spherically symmetrical charge distributions.
+ * @date 2024-04-28
+ *
+ * @copyright Copyright (c) 2024 Max Maschke
+ *
+ */
 
 #ifndef POISSON_COLLOCATION_H
 #define POISSON_COLLOCATION_H

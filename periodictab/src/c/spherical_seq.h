@@ -1,7 +1,7 @@
 /**
  * @file spherical_seq.h
  * @author Max Maschke (m.maschke@tu-bs.de)
- * @brief Templated class that solves the Schrödinger equation for shperically
+ * @brief Templated class that solves the Schrödinger equation for spherically
  * symmetric Problems.
  * @date 2024-04-28
  * 
@@ -204,6 +204,7 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
     if (physicalPoints(0) != 0.0) {
         throw std::runtime_error("For valid results, the knot points must start at 0.");
     }
+
     this->splines = b_splines<numeric_type>(this->spline_order, this->physical_points);
 
     unsigned int N = this->splines.num_knots;
@@ -211,7 +212,6 @@ physical_points(physicalPoints), V(potential), spline_order(splineOrder), l(L), 
 
     this->H = Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(N - k - 2, N - k - 2);
     this->B = Eigen::Matrix<numeric_type, Eigen::Dynamic, Eigen::Dynamic>::Zero(N - k - 2, N - k - 2);
-    
     // we don't use the first and last spline to enforce bcs
     for (int i = 1; i < N - k - 1; i++) {
         for (int j = 1; j < N - k - 1; j++) {
