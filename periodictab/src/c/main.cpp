@@ -9,9 +9,9 @@
 
 int main() {
     int maxit = 80;
-    int n_seq = 250;
-    int n_pot = 400;
-    double rmax = 10; //TODO might be too small for bigger atoms
+    int n_seq = 150;
+    int n_pot = 300;
+    double rmax = 40; //TODO might be too small for bigger atoms
 
     std::ofstream file;
     file.open("../results/ionergs3.txt");
