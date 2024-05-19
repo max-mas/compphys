@@ -18,6 +18,9 @@ cmake-build-release
 # big eigenvector files don't have to be pushed
 ./eig_1/results/evecs/
 ./poisson_colloc/results/
+build
+./apw/src/build
+./apw/src/build/
 
 # latex stuff
 *.aux
