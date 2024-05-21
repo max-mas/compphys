@@ -4,7 +4,7 @@ project(apw)
 set(CMAKE_CXX_STANDARD 17)
 
 find_package(Eigen3 3.4 REQUIRED NO_MODULE)
-#find_package(OpenMP REQUIRED)
+find_package(OpenMP REQUIRED)
 find_package(Boost REQUIRED)
 
 add_executable(apw
@@ -21,4 +21,4 @@ add_executable(apw
         c/atom.cpp
 )
 
-target_link_libraries(apw PUBLIC Eigen3::Eigen Boost::boost)
+target_link_libraries(apw PUBLIC Eigen3::Eigen Boost::boost OpenMP::OpenMP_CXX)

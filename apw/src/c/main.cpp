@@ -5,18 +5,18 @@
 int main() {
     if (true) {
         // Lithium lattice vecs:
-        double lattice_const = 6.632; // (Bohr radii) !
+        double lattice_const = 6.632; // (Bohr radii) ! TODO change to 6.4912 a_0 used to be 6.632
         Vector3d A, B, C;
-        A << 1.0, 1.0, -1.0;
+        A << -1.0, 1.0, 1.0;
         A *= lattice_const / 2.0;
-        B << -1.0, 1.0, 1.0;
+        B << 1.0, -1.0, 1.0;
         B *= lattice_const / 2.0;
-        C << 1.0, -1.0, 1.0;
+        C << 1.0, 1.0, -1.0;
         C *= lattice_const / 2.0;
 
         std::vector<Vector3d> lattice_vecs({A, B, C});
 
-        apw a(3, 3, 3.0, lattice_vecs, lattice_const);
+        apw a(3, 6, 1.35, lattice_vecs, lattice_const); // what cutoff?
     }
 
     if (false) {

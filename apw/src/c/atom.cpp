@@ -155,6 +155,7 @@ Eigen::MatrixXi atom::determine_occupation() {
     std::cout << "Occupancy:\n";
     for (int l = 0; l <= this-> l_max; l++) {
         for (int n = 0; n < this->knots_seq.size(); n++) {
+            if (n-l < 0) continue;
             double E = seq_solvers[l].energies(n-l);
             if (retmat(l,n) > 0) std::cout << n+1 << this->orbital_names[l] << ": "
                 << retmat(l,n) <<", E = " << E << "\n"; // n - l !
