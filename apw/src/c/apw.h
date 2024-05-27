@@ -50,6 +50,8 @@ using std::complex, std::conj;
 
 #include <string>
 
+#include <filesystem>
+
 #include "atom.h"
 
 #include "progressbar.hpp"
@@ -64,10 +66,16 @@ public:
     apw() = default;
 
     // for now: only 1+ ions where 1 electron removed
-    apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius, std::vector<Vector3d> latticeVecs, double latticeConst);
+    apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius, double k_cutoff, 
+        std::vector<Vector3d> latticeVecs, double latticeConst, std::string path);
 
     void save_muffin_tin_orbital(int l, std::string path,
                         std::vector<std::pair<std::function<double (double)>, std::function<double (double)>>> muffin_tin_functions);
+
+    
+    void save_dets_high_symmetry(const std::vector<Vector3d> & Ks, std::string path);
+
+    void save_dets_BZ(const std::vector<Vector3d> & Ks, std::string path);
 
     void save_dets_on_k_path(int k_steps, int E_steps, Vector3d k0, Vector3d k_diff, std::vector<Vector3d> Ks, std::string path);    
 
@@ -99,6 +107,9 @@ private:
 
     void generate_H(MatrixXd & H, double E, Vector3d k, std::vector<Vector3d> finite_reciprocal_lattice_set,
                         std::vector<std::pair<std::function<double (double)>, std::function<double (double)>>>  muffin_tin_functions);
+
+
+    VectorXd monkhorst_pack_factors(int N);
 
 };
 

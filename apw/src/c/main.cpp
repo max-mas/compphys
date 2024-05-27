@@ -16,7 +16,9 @@ int main() {
 
         std::vector<Vector3d> lattice_vecs({A, B, C});
 
-        apw a(3, 6, 1.35, lattice_vecs, lattice_const); // what cutoff?
+        //apw a(3, 6, 1.30, 2.0, lattice_vecs, lattice_const, "../results/det_4_R_130/"); // what cutoff?
+        apw a(3, 6, 1.30, 2.0, lattice_vecs, lattice_const, "../results/det_DOS_2_morepts/");
+
     }
 
     if (false) {

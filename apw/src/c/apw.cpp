@@ -1,7 +1,7 @@
 #include "apw.h"
 
-apw::apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius, 
-         std::vector<Vector3d> latticeVecs, double latticeConst)
+apw::apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius, double k_cutoff, 
+         std::vector<Vector3d> latticeVecs, double latticeConst, std::string path)
 : lmax(lMax), Z(chargeNum), R(muffin_tin_radius), lattice_vecs(latticeVecs), lattice_constant(latticeConst) {
     cout << "--------------------------------------------------------------------------------------------------\n";
     cout << "Band structure calculation for Z = " << this->Z << ".\n";
@@ -18,52 +18,23 @@ apw::apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius,
     cout << "--------------------\n";
 
     cout << "Solving atomic problem for 1+ ion to retrieve potential:" << endl; 
-    this->ion = atom(chargeNum, chargeNum-1, 50, 50, 200, 500, 0.4, 5e-3); //TODO tolerance too big for final build
+    this->ion = atom(chargeNum, chargeNum-1, 50, 50, 200, 500, 0.4, 5e-4); //TODO tolerance too big for final build
+    // 50, 50, 200, 500, 0.4, 5e-4
     this->ion.run();
     cout << "--------------------" << endl;
 
     cout << "Generating finite set of K vectors to sum.";
-    double cutoff = 2.0; // use cutoff 3 or 4 for many vectors, 2 for testing
+    // use cutoff 3 or 4 for many vectors, 2 for testing
     int index_cutoff = 6;
-    std::vector<Vector3d> Ks = this->generate_finite_reciprocal_lattice_set(cutoff, index_cutoff);
+    std::vector<Vector3d> Ks = this->generate_finite_reciprocal_lattice_set(k_cutoff, index_cutoff);
     size_t n_K = Ks.size();  
-    cout << " Found " << n_K << " vectors with norm less than " << cutoff << " and coefficients less than " << index_cutoff << ".\n" << endl;
+    cout << " Found " << n_K << " vectors with norm less than " << k_cutoff << " and coefficients less than " << index_cutoff << ".\n" << endl;
     
-    cout << "-------------------------------------------------------------------------------------------------\n\n";
-    cout << "Calculating determinant along k paths." << endl;    
+    //this->save_dets_high_symmetry(Ks, path);
 
-    Vector3d G, H, P, N;
-    G <<                        0,                     0,                     0;
-    H <<  2*M_PI/lattice_constant,                     0,                     0;
-    P <<    M_PI/lattice_constant, M_PI/lattice_constant, M_PI/lattice_constant;
-    N <<    M_PI/lattice_constant, M_PI/lattice_constant,                     0;
+    this->save_dets_BZ(Ks, path);
 
-    int k_steps = 100;
-    int E_steps = 2000;
-    cout << "Getting det from G to H point." << endl;
-    Vector3d diff = H - G;
-    std::string path1 = "../results/det_2_R_135/g_h/";
-    this->save_dets_on_k_path(k_steps, E_steps, G, diff, Ks, path1);
-
-    cout << "Getting det from H to N point." << endl;
-    diff = N - H;
-    std::string path2 = "../results/det_2_R_135/h_n/";
-    this->save_dets_on_k_path(k_steps, E_steps, H, diff, Ks, path2);    
-
-    cout << "Getting det from N to G point." << endl;
-    diff = G - N;
-    std::string path3 = "../results/det_2_R_135/n_g/";
-    this->save_dets_on_k_path(k_steps, E_steps, N, diff, Ks, path3);
-
-    cout << "Getting det from G to P point." << endl;
-    diff = P - G;
-    std::string path4 = "../results/det_2_R_135/g_p/";
-    this->save_dets_on_k_path(k_steps, E_steps, G, diff, Ks, path4);
-
-    cout << "Getting det from P to H point." << endl;
-    diff = H - P;
-    std::string path5 = "../results/det_2_R_135/p_h/";
-    this->save_dets_on_k_path(k_steps, E_steps, P, diff, Ks, path5);
+    
 
 }
 
@@ -80,6 +51,103 @@ void apw::save_muffin_tin_orbital(int l, std::string path, std::vector<std::pair
     }
     // don't forget to clean up :)
     file.close();
+}
+
+void apw::save_dets_high_symmetry(const std::vector<Vector3d> &Ks, std::string path) {
+    cout << "-------------------------------------------------------------------------------------------------\n\n";
+    cout << "Calculating determinant along k paths." << endl;    
+
+    Vector3d G, H, P, N;
+    G <<                        0,                     0,                     0;
+    H <<  2*M_PI/lattice_constant,                     0,                     0;
+    P <<    M_PI/lattice_constant, M_PI/lattice_constant, M_PI/lattice_constant;
+    N <<    M_PI/lattice_constant, M_PI/lattice_constant,                     0;
+
+    int k_steps = 100;
+    int E_steps = 2000;
+    cout << "Getting det from G to H point." << endl;
+    Vector3d diff = H - G;
+    std::string path1 = path + "g_h/";
+    this->save_dets_on_k_path(k_steps, E_steps, G, diff, Ks, path1);
+
+    cout << "Getting det from H to N point." << endl;
+    diff = N - H;
+    std::string path2 = path + "h_n/";
+    this->save_dets_on_k_path(k_steps, E_steps, H, diff, Ks, path2);    
+
+    cout << "Getting det from N to G point." << endl;
+    diff = G - N;
+    std::string path3 = path + "n_g/";
+    this->save_dets_on_k_path(k_steps, E_steps, N, diff, Ks, path3);
+
+    cout << "Getting det from G to P point." << endl;
+    diff = P - G;
+    std::string path4 = path + "g_p/";
+    this->save_dets_on_k_path(k_steps, E_steps, G, diff, Ks, path4);
+
+    cout << "Getting det from P to H point." << endl;
+    diff = H - P;
+    std::string path5 = path + "p_h/";
+    this->save_dets_on_k_path(k_steps, E_steps, P, diff, Ks, path5);
+}
+
+void apw::save_dets_BZ(const std::vector<Vector3d> &Ks, std::string path) {
+    cout << "-------------------------------------------------------------------------------------------------\n\n";
+    cout << "Calculating determinant in BZ for DOS estimation." << endl;    
+
+    size_t n_K = Ks.size();
+    size_t E_steps = 2000;
+
+    int N = 20; // 10^3 = 1000 BZ pts
+    VectorXd mpack_coeffs = this->monkhorst_pack_factors(N);
+
+    progressbar bar(N * N * N);
+
+    std::filesystem::create_directory(path);
+
+    for (int i = 0; i < N; i++) {
+    for (int j = 0; j < N; j++) {
+    for (int l = 0; l < N; l++) {
+        Vector3d k_vec =  mpack_coeffs(i) * this->reciprocal_lattice_vecs[0]
+                        + mpack_coeffs(j) * this->reciprocal_lattice_vecs[1]
+                        + mpack_coeffs(l) * this->reciprocal_lattice_vecs[2];
+
+        double E_APW = k_vec.norm() * k_vec.norm() / 2;
+        std::vector<std::pair<std::function<double (double)>, std::function<double (double)>>> 
+            muffin_tin_functions =  this->get_muffin_tin_functions_E(E_APW);
+
+
+        std::vector<double> Es;
+        std::vector<double> dets;
+
+        MatrixXd H = MatrixXd::Zero(n_K, n_K);
+        VectorXd test_Es = VectorXd::LinSpaced(E_steps, -1.0, 1.0);
+        for (double E : test_Es) {       
+            this->generate_H(H, E, k_vec, Ks, muffin_tin_functions);  // update H in place             
+            double det = (H - E * MatrixXd::Identity(n_K, n_K)).determinant();
+            Es.emplace_back(E);
+            dets.emplace_back(det);
+        }
+
+        std::ofstream file;
+        file.open(path  + "det_" + std::to_string(k_vec(0)) + "_" + std::to_string(k_vec(1)) 
+                        + "_" + std::to_string(k_vec(2)) + ".txt");
+        // write
+        for (int lineindex = 0; lineindex < dets.size(); lineindex++) {
+            file << std::setprecision(std::numeric_limits<long double>::digits10 + 1) // get all digits
+                << std::scientific << Es[lineindex] << ","
+                << std::scientific << dets[lineindex] << std::endl;
+        }
+        // don't forget to clean up :)
+        file.close();
+
+        
+        bar.update();
+    }
+    }
+    }
+    
+
 }
 
 void apw::save_dets_on_k_path(int k_steps, int E_steps, Vector3d k0, Vector3d k_diff, std::vector<Vector3d> Ks, std::string path) {
@@ -260,8 +328,8 @@ std::vector<Vector3d> apw::generate_finite_reciprocal_lattice_set(double norm_cu
 void apw::generate_H(MatrixXd & H, double E, Vector3d k, std::vector<Vector3d> finite_reciprocal_lattice_set,
                          std::vector<std::pair<std::function<double (double)>, std::function<double (double)>>>  muffin_tin_functions) {
     size_t n_K = finite_reciprocal_lattice_set.size(); 
-    double V = this->lattice_vecs[0].transpose() * 
-        (this->lattice_vecs[1].cross(this->lattice_vecs[2])); 
+    double V = abs(this->lattice_vecs[0].transpose() * 
+        (this->lattice_vecs[1].cross(this->lattice_vecs[2]))); // TODO factor of 2, test
 
     for (int i = 0; i < n_K; i++) {
 #pragma omp parallel for // maybe this helps speed up matrix creation?
@@ -297,4 +365,14 @@ void apw::generate_H(MatrixXd & H, double E, Vector3d k, std::vector<Vector3d> f
             H(i, j) = matel;
         }
     }
+}
+
+VectorXd apw::monkhorst_pack_factors(int N) {
+    VectorXd ret = VectorXd::Zero(N);
+
+    for (int r = 1; r <= N; r++) {
+        ret(r-1) = double((2 * r - N - 1)) / double((2*N));
+    }
+
+    return ret;
 }

@@ -41,7 +41,7 @@ def main():
     
     #plot_muffin_tins(xs_s, psi_s, "../../plots/test.pdf")
 
-    path = "../../results/det_2_med_R/"
+    path = "../../results/det_2_R_130/"
     E_outer = []
     k_outer = []
     det_outer = []
@@ -59,9 +59,9 @@ def main():
             Es, det = load_function(path + subfolder + file)
             s1 = str(file).split("k")[1].split(".")[0] + "." + str(file).split("k")[1].split(".")[1]
             k = float(s1)
-            if k == 0 and folder == "g_h/":
-                continue
-            print(s1)
+            #if k == 0 and folder == "g_h/":
+            #    continue
+            #print(s1)
             Es_s.append(Es)
             ks.append(k)
             det_s.append(det)
@@ -70,7 +70,33 @@ def main():
         k_outer.append(ks)
         det_outer.append(det_s)
 
-    plot_bandstructure(E_outer, k_outer, det_outer, point_names, "../../plots/bs_2_med_R.pdf", exp=False)
+    E_DOS = []
+    E_kf = []
+    k_kf = []
+    path = "../../results/det_DOS_2/"
+    files = natsort.natsorted(listdir(path))
+    for file in files:
+        Es, det = load_function(path + file)
+        k = np.array([0, 0, 0], dtype=np.double)
+        s = file.split("_")
+        k[0] = float(s[1])
+        k[1] = float(s[2])
+        k[2] = float(s[3].split(".")[0])
+        #print(k)
+        det_abs = np.abs(det)
+        potential_zeros = Es[argrelextrema(det_abs, np.less)]  
+        for E in potential_zeros:
+            E_DOS.append(E)
+            #if np.abs(2 * (E - 0.015507753876938368) - 0.1742) < 1e-3:
+            if np.abs(E - 0.1742) < 2e-3:
+            #if True:
+                print("Added vec to FS vecs")
+                k_kf.append(k)
+                E_kf.append(E)
+
+    plot_bandstructure(E_outer, k_outer, det_outer, point_names, "../../plots/bs_2_R_130.pdf", E_DOS=E_DOS)
+    #print(k_kf)
+    plot_fs(E_kf, k_kf, "../../plots/fs_test.pdf")
     #plot_bandstructure(E_outer, k_outer, det_outer, point_names, "../../plots/bs_exp.pdf", exp=True)
 
     """
@@ -151,8 +177,14 @@ def plot_det(Es, det, path):
     plt.close(fig)
 
 
-def plot_bandstructure(E_outer, k_outer, det_outer, point_names, path, exp = False):
-    fig, [ax, ax2] = plt.subplots(1, 2, width_ratios=[3, 1])
+def plot_bandstructure(E_outer, k_outer, det_outer, point_names, path, E_DOS=None):
+    plot_dos = False if E_DOS is None else True
+
+
+    if plot_dos:
+        fig, [ax, ax2] = plt.subplots(1, 2, width_ratios=[3, 1])
+    else:
+        fig, ax = plt.subplots()
 
     points = []
     points_flat = []
@@ -178,25 +210,28 @@ def plot_bandstructure(E_outer, k_outer, det_outer, point_names, path, exp = Fal
         ticks.append(k_offset)
 
 
-    H = 2*27.211386246 # TODO lying to myself?
+    H = 27.211386246 # TODO lying to myself?
     
-    mini = np.min(H*np.asarray(points_flat))
-    #EF = H/2*0.1742
-    EF = 3.9
-    bands = H*np.asarray(points_flat) - mini
+    mini = np.min(np.asarray(points_flat))
+    print(mini)
+    EF = H*0.1742
+    #EF = 3.9
+    #bands = 2*H*(np.asarray(points_flat) - mini)
+    bands = H*(np.asarray(points_flat))
 
-    p2 = ax.axhline(EF, color="indianred", ls="--", label="$E_\\text{F}" + f"={np.round(EF, 2)}$ (eV)") # TODO s.o.
-    #p3 = ax.axhline(mini, color="lightseagreen", ls="-.", label="$E_\\text{min} =" + f"{np.round(m, 2)}$ (eV)")
+    p2 = ax.axhline(EF, color="indianred", ls="--", label="$E_\\text{F}" + f"={np.round(EF, 2)}$ eV") # TODO s.o.
+    #p3 = ax.axhline(mini, color="lightseagreen", ls="-.", label="$E_\\text{min} =" + f"{np.round(mini, 2)}$ eV")
     
     p1 = ax.scatter(k_plot_flat, bands, marker="o", s=2, color="forestgreen", label="$E(k)$")
     
-    #unique_E, dos = np.unique(points_flat, return_counts=True)
-    #dos_spl = splrep(unique_E, dos, k=5, s=100)
-    #dos_smooth = splev(unique_E, dos_spl)
-    #ax2.hist(points_flat, bins=50, histtype="step", orientation="horizontal")
-    sns.histplot(y=bands, bins=100, color="mediumblue", kde=True, kde_kws={"bw_method": 0.05}, line_kws={"color": "coral", "ls": "--"} ,ax=ax2)
-    ax2.set_xlabel("DOS (a.u.)")
-    ax2.set_xticks([])
+    if plot_dos:
+        #2*H*(np.asarray(E_DOS) - mini)
+        sns.histplot(y=np.asarray(E_DOS), bins=50, color="mediumblue", kde=True, kde_kws={"bw_method": 0.05}, line_kws={"color": "coral", "ls": "--"} ,ax=ax2)
+        #sns.kdeplot(y=bands, color="mediumblue", fill=True, ax=ax2)
+    
+        ax2.set_xlabel("DOS (a.u.)")
+        ax2.set_xticks([])
+        #ax2.set_ylim([0, 20])
 
     ax.set_xticks(ticks)
     ax.set_xticklabels(point_names)
@@ -205,8 +240,8 @@ def plot_bandstructure(E_outer, k_outer, det_outer, point_names, path, exp = Fal
     ax.set_ylabel("$E$ (eV)")
 
     ax.set_xlim([ticks[0], ticks[-1]])
-    ax.set_ylim([0, 20])
-    ax2.set_ylim([0, 20])
+    #ax.set_ylim([0, 20])
+    
 
     plots = [p1, p2]
     ax.legend(plots, [plot.get_label() for plot in plots], loc="upper right")
@@ -247,7 +282,33 @@ def assign_bands(ks, Es_outer):
     return Es_bands
 
 
+def plot_fs(E_kf, k_kf, path):
+    fig, ax = plt.subplots()
 
+    k_xy_plane = []
+    for k in k_kf:
+        if np.abs(k[2]) < 1e-12:
+            k_xy_plane.append(k)
+    
+    k_x = [k[0] for k in k_xy_plane]
+    k_y = [k[1] for k in k_xy_plane]
+
+    theta = np.linspace(0, 2*np.pi, 1000)
+    x_fe = np.sqrt(2*E_kf[0]) * np.cos(theta)
+    y_fe = np.sqrt(2*E_kf[0]) * np.sin(theta)
+
+    ax.scatter(k_x, k_y, label="Numerical FS")
+    ax.scatter(x_fe, y_fe, s=5, label="Free electrons")
+    ax.axis("equal")
+
+    ax.legend()
+    ax.set_xlabel("$k_x$")
+    ax.set_ylabel("$k_y$")
+
+    fig.tight_layout()
+
+    fig.savefig(path)
+    plt.close(fig)
 
 
 main()
