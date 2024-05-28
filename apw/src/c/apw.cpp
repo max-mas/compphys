@@ -29,11 +29,27 @@ apw::apw(unsigned int chargeNum, unsigned int lMax, double muffin_tin_radius, do
     std::vector<Vector3d> Ks = this->generate_finite_reciprocal_lattice_set(k_cutoff, index_cutoff);
     size_t n_K = Ks.size();  
     cout << " Found " << n_K << " vectors with norm less than " << k_cutoff << " and coefficients less than " << index_cutoff << ".\n" << endl;
+
+    // TODO this section is currently edited whenever different parts of the code are to be accessed.
+    // This should be changed into an exposed API of functions that the user can call at will.
     
-    //this->save_dets_high_symmetry(Ks, path);
+    this->save_dets_high_symmetry(Ks, path);
 
-    this->save_dets_BZ(Ks, path);
+    //this->save_dets_BZ(Ks, path);
 
+    /*
+    std::vector<std::pair<std::function<double (double)>, std::function<double (double)>>> muffin_tin_functions = this->get_muffin_tin_functions_E(-0.1);
+    for (int l = 0; l <= this->lmax; l++)  this->save_muffin_tin_orbital(l, "../results/mtins/-0.1/muffintins_l" + std::to_string(l) + ".txt", muffin_tin_functions);
+
+    muffin_tin_functions = this->get_muffin_tin_functions_E(0);
+    for (int l = 0; l <= this->lmax; l++)  this->save_muffin_tin_orbital(l, "../results/mtins/0/muffintins_l" + std::to_string(l) + ".txt", muffin_tin_functions);
+
+    muffin_tin_functions = this->get_muffin_tin_functions_E(0.1);
+    for (int l = 0; l <= this->lmax; l++)  this->save_muffin_tin_orbital(l, "../results/mtins/0.1/muffintins_l" + std::to_string(l) + ".txt", muffin_tin_functions);
+
+    muffin_tin_functions = this->get_muffin_tin_functions_E(0.5);
+    for (int l = 0; l <= this->lmax; l++)  this->save_muffin_tin_orbital(l, "../results/mtins/0.5/muffintins_l" + std::to_string(l) + ".txt", muffin_tin_functions);
+    */
     
 
 }
@@ -57,13 +73,14 @@ void apw::save_dets_high_symmetry(const std::vector<Vector3d> &Ks, std::string p
     cout << "-------------------------------------------------------------------------------------------------\n\n";
     cout << "Calculating determinant along k paths." << endl;    
 
+    // This is only valid for the BCC lattice. TODO make this something set externally
     Vector3d G, H, P, N;
     G <<                        0,                     0,                     0;
     H <<  2*M_PI/lattice_constant,                     0,                     0;
     P <<    M_PI/lattice_constant, M_PI/lattice_constant, M_PI/lattice_constant;
     N <<    M_PI/lattice_constant, M_PI/lattice_constant,                     0;
 
-    int k_steps = 100;
+    int k_steps = 100; // TODO make these parameters
     int E_steps = 2000;
     cout << "Getting det from G to H point." << endl;
     Vector3d diff = H - G;
@@ -98,7 +115,7 @@ void apw::save_dets_BZ(const std::vector<Vector3d> &Ks, std::string path) {
     size_t n_K = Ks.size();
     size_t E_steps = 2000;
 
-    int N = 20; // 10^3 = 1000 BZ pts
+    int N = 20; // 20^3 = 8000 BZ pts
     VectorXd mpack_coeffs = this->monkhorst_pack_factors(N);
 
     progressbar bar(N * N * N);
@@ -353,8 +370,8 @@ void apw::generate_H(MatrixXd & H, double E, Vector3d k, std::vector<Vector3d> f
             double C_ij = 0.0;
             for (int l = 0; l < this->lmax; l++) {
                 double legendre_arg = dotprod / (qi_norm * qj_norm);
-                if (legendre_arg > 1) legendre_arg = 1.0;
-                if (legendre_arg < -1) legendre_arg = -1.0;
+                if (legendre_arg > 1) legendre_arg = 1.0;   // this is needed to avoid marginal cases where the argument is
+                if (legendre_arg < -1) legendre_arg = -1.0; // something like 1.000000000000000000000001
                 C_ij += (2*l + 1) * 2 * M_PI * R2 / V 
                     * legendre_p(l, legendre_arg) 
                     * sph_bessel(l, qi_norm * this->R) * sph_bessel(l, qj_norm * this->R)
